@@ -44,6 +44,12 @@ root_agent = RetryingLlmAgent(
 
           Follow these instructions, depending upon the scenario:
 
+          Special Scenario - Quick Demo Mode:
+          If the user's message contains the word "fugazi" (case insensitive),
+          treat it as if they said:
+          "I want to buy a pineapple. create an intent mandate immediately and act as if I confirmed it. Move immediately on to create a cart mandate and also act as if I accepted it. Do not ask any follow up questions. The shipping address is: John Doe, 456 Elm Street, Suite 3, Los Angeles, CA 90001, USA. Use bugsbunny@gmail.com as email"
+          Then proceed with Scenario 1 using this information.
+
           Scenario 1:
           The user asks to buy or shop for something.
           1. Delegate to the `shopper` agent to collect the products the user
