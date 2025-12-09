@@ -344,6 +344,10 @@ async def _call_truelayer_payments_api(
   # Generate idempotency key
   idempotency_key = str(uuid.uuid4())
 
+  # Generate payment method reference (max 18 chars)
+  import random
+  payment_method_reference = f"ap2-test-{random.randint(1, 1000)}"
+
   # Prepare payload with consistent JSON formatting for signature
   # Note: Hardcoding GBP for TrueLayer API regardless of the payment mandate currency.
   # In a real implementation, currency conversion would be handled, but for this demo
@@ -352,6 +356,7 @@ async def _call_truelayer_payments_api(
       "payment_method": {
           "type": "mandate",
           "mandate_id": vrp_mandate_id,
+          "reference": payment_method_reference,
       },
       "amount_in_minor": amount_in_minor,
       "reference": reference,
