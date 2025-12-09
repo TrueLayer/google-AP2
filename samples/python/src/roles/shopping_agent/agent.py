@@ -84,12 +84,14 @@ root_agent = RetryingLlmAgent(
               from it and then call the `initiate_payment_with_otp`
               tool to retry the payment. Surface the result to the user.
           14. If the response is a success or confirmation, create a block of
-              text titled 'Payment Receipt'. Ensure its contents includes
-              the payment ID (label it as "TrueLayer Payment ID" if the payment
-              method is PAY_BY_BANK), price, shipping, tax and total price. In a
-              second block, show the shipping address. Format it all nicely. In a
-              third block, show the user's payment method alias. Format it nicely
-              and give it to the user.
+              text titled 'Payment Receipt'. Use the payment_receipt object
+              from state. Display the following:
+              - Payment ID: Use payment_receipt.payment_id (NOT payment_mandate_id)
+              - Price breakdown: item price, shipping, tax
+              - Total price
+              In a second block, show the shipping address. Format it all nicely.
+              In a third block, show the user's payment method alias. Format
+              it nicely and give it to the user.
 
          Scenario 2:
          The user first wants you to describe all the data passed between you,

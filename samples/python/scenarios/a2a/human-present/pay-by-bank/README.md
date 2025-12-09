@@ -54,13 +54,13 @@ This sample consists of:
 
 Ensure you have obtained a Google API key from
 [Google AI Studio](https://aistudio.google.com/apikey). You also need to set up
-TrueLayer credentials including a VRP mandate ID, client credentials, and signing
+TrueLayer credentials including a mandate ID, client credentials, and signing
 keys. Declare the required variables in one of two ways.
 
 *   Option 1: Declare them as environment variables:
     ```sh
     export GOOGLE_API_KEY=your_key
-    export VRP_MANDATE_ID=your_vrp_mandate_id
+    export TL_MANDATE_ID=your_mandate_id
     export TL_DOMAIN=t7r.dev
     export TL_CLIENT_ID=your_client_id
     export TL_CLIENT_SECRET=your_client_secret
@@ -70,7 +70,7 @@ keys. Declare the required variables in one of two ways.
 *   Option 2: Put them into an .env file at the root of your repository:
     ```sh
     echo "GOOGLE_API_KEY=your_key" > .env
-    echo "VRP_MANDATE_ID=your_vrp_mandate_id" >> .env
+    echo "TL_MANDATE_ID=your_mandate_id" >> .env
     echo "TL_DOMAIN=t7r.dev" >> .env
     echo "TL_CLIENT_ID=your_client_id" >> .env
     echo "TL_CLIENT_SECRET=your_client_secret" >> .env
@@ -78,7 +78,7 @@ keys. Declare the required variables in one of two ways.
     echo "TL_SIGNING_PRIVATE_KEY=your_private_key_pem" >> .env
     ```
 
-**Note**: All TrueLayer credentials (VRP mandate ID, client ID, client secret,
+**Note**: All TrueLayer credentials (mandate ID, client ID, client secret,
 domain, signing key ID, and private key) should be obtained from your TrueLayer
 account. The bearer token will be dynamically generated using the client credentials.
 

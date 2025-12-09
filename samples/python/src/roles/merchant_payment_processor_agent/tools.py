@@ -204,6 +204,8 @@ async def _complete_payment(
       payment_mandate.payment_mandate_contents.payment_response.method_name
   )
 
+  truelayer_payment_id = None
+
   if payment_method_type == "PAY_BY_BANK":
     # Extract VRP mandate ID from credentials
     vrp_mandate_id = payment_credential.get("vrp_mandate_id")
@@ -224,7 +226,6 @@ async def _complete_payment(
         vrp_mandate_id,
     )
 
-    truelayer_payment_id = None
     try:
       # Call TrueLayer Payments API
       truelayer_response = await _call_truelayer_payments_api(
@@ -252,8 +253,10 @@ async def _complete_payment(
   # Create payment receipt, using TrueLayer payment ID if available
   payment_receipt = _create_payment_receipt(
       payment_mandate,
-      payment_id=truelayer_payment_id if payment_method_type == "PAY_BY_BANK" else None
+      payment_id=truelayer_payment_id
   )
+  if truelayer_payment_id:
+    logging.info("Creating receipt with TrueLayer payment ID: %s", truelayer_payment_id)
   await _send_payment_receipt_to_credentials_provider(
       payment_receipt,
       credentials_provider,

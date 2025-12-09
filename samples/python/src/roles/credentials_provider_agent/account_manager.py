@@ -80,7 +80,7 @@ _account_db = {
                 "network": [{"name": "truelayer"}],
                 "account_number": "12345678",
                 "alias": "TrueLayer Pay by Bank",
-                "vrp_mandate_id": os.getenv("VRP_MANDATE_ID"),
+                "vrp_mandate_id": os.getenv("TL_MANDATE_ID") or os.getenv("VRP_MANDATE_ID"),
             },
         },
     },
@@ -173,12 +173,16 @@ def get_account_payment_methods(email_address: str) -> list[dict[str, Any]]:
     email_address: The account's email address.
 
   Returns:
-    A list of the user's payment_methods.
+    A list of the user's payment_methods, with PAY_BY_BANK methods first.
   """
-
-  return list(
+  payment_methods = list(
       _account_db.get(email_address, {}).get("payment_methods", {}).values()
   )
+
+  # Sort to show PAY_BY_BANK first
+  payment_methods.sort(key=lambda pm: (pm.get("type") != "PAY_BY_BANK", pm.get("alias", "")))
+
+  return payment_methods
 
 
 def get_account_shipping_address(email_address: str) -> dict[str, Any]:
