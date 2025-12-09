@@ -38,15 +38,20 @@ This sample consists of:
 
 **1. Pay by Bank purchase**
 
-*   The merchant agent will advertise support for PAY_BY_BANK payment method through its
-    agent card and through the CartMandate once shopping is complete.
-*   The preferred payment method in the user's wallet will be TrueLayer Pay by Bank
-    enabled for instant payments.
+*   The merchant agent will advertise support for two TrueLayer payment methods:
+    *   `TRUELAYER_VRP_MANDATE`: Variable Recurring Payments using a pre-authorized mandate
+    *   `TRUELAYER_SIP`: Single Immediate Payment for one-time bank transfers
+*   The user's wallet will show both TrueLayer payment options, with VRP mandate listed first.
 
-**2. Direct Payment Processing**
+**2. Payment Processing Flow**
 
-*   Pay by Bank payments are processed directly without additional authentication
-    challenges, providing a streamlined payment experience.
+*   **VRP Mandate**: Processed directly without additional authentication challenges.
+    Uses a pre-authorized mandate ID to execute recurring payments and generates
+    a payment receipt immediately.
+*   **SIP (Single Immediate Payment)**: Initiation-only flow:
+    1. Payment is initiated and a redirect URI is returned to the user
+    2. User is directed to TrueLayer's hosted payment page to authorize the payment
+    3. Payment remains in authorization_required state (completion handling not yet implemented)
 
 ## Executing the Example
 
@@ -66,6 +71,9 @@ keys. Declare the required variables in one of two ways.
     export TL_CLIENT_SECRET=your_client_secret
     export TL_SIGNING_KEY_ID=your_signing_key_id
     export TL_SIGNING_PRIVATE_KEY=your_private_key_pem
+    export TL_MERCHANT_ACCOUNT_ID=your_merchant_account_id
+    export TL_BENEFICIARY_NAME=your_beneficiary_name
+    export TL_RETURN_URI=https://console.t7r.dev/redirect-page
     ```
 *   Option 2: Put them into an .env file at the root of your repository:
     ```sh
@@ -76,11 +84,16 @@ keys. Declare the required variables in one of two ways.
     echo "TL_CLIENT_SECRET=your_client_secret" >> .env
     echo "TL_SIGNING_KEY_ID=your_signing_key_id" >> .env
     echo "TL_SIGNING_PRIVATE_KEY=your_private_key_pem" >> .env
+    echo "TL_MERCHANT_ACCOUNT_ID=your_merchant_account_id" >> .env
+    echo "TL_BENEFICIARY_NAME=your_beneficiary_name" >> .env
+    echo "TL_RETURN_URI=https://console.t7r.dev/redirect-page" >> .env
     ```
 
 **Note**: All TrueLayer credentials (mandate ID, client ID, client secret,
-domain, signing key ID, and private key) should be obtained from your TrueLayer
-account. The bearer token will be dynamically generated using the client credentials.
+domain, signing key ID, private key, merchant account ID, beneficiary name,
+and return URI) should be obtained from your TrueLayer account. The bearer token
+will be dynamically generated using the client credentials. The return URI defaults
+to `https://console.t7r.dev/redirect-page` if not specified.
 
 ### Execution
 
@@ -142,12 +155,12 @@ This section walks you through a typical interaction with the sample.
     methods.
 1.  **Payment Method Selection**: After you select a cart, the Shopping Agent
     will show you a list of available payment methods from the Credentials
-    Provider Agent. You will select "TrueLayer Pay by Bank" as your payment method.
+    Provider Agent. You will select "TrueLayer VRP mandate" as your payment method.
 1.  **PaymentMandate creation**: The Shopping Agent will package the cart and
     transaction information in a PaymentMandate and ask you to sign the
     mandate. It will initiate payment using the PaymentMandate.
 1.  **Direct Payment Processing**: The Merchant Payment Processor will process
-    the PAY_BY_BANK payment immediately without requiring additional authentication.
+    the TRUELAYER_VRP_MANDATE payment immediately without requiring additional authentication.
 1.  **Purchase Complete**: The payment will be processed instantly, and you'll
     receive a confirmation message and a digital receipt.
 

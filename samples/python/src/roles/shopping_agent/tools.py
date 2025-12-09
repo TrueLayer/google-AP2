@@ -188,9 +188,18 @@ def create_payment_mandate(
 
   payment_request = cart_mandate.contents.payment_request
   shipping_address = tool_context.state["shipping_address"]
+
+  # Determine payment method type based on the selected alias
+  selected_alias = tool_context.state.get("selected_payment_method_alias", "")
+  if "SIP" in selected_alias or "Single immediate payment" in selected_alias:
+    method_name = "TRUELAYER_SIP"
+  else:
+    # Default to VRP mandate for TrueLayer payments
+    method_name = "TRUELAYER_VRP_MANDATE"
+
   payment_response = PaymentResponse(
       request_id=payment_request.details.id,
-      method_name="PAY_BY_BANK",
+      method_name=method_name,
       details={
           "token": tool_context.state["payment_credential_token"],
       },

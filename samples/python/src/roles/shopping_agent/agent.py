@@ -86,7 +86,9 @@ root_agent = RetryingLlmAgent(
           14. If the response is a success or confirmation, create a block of
               text titled 'Payment Receipt'. Use the payment_receipt object
               from state. Display the following:
-              - Payment ID: Use payment_receipt.payment_id (NOT payment_mandate_id)
+              - Payment ID: CRITICAL - You MUST use the field payment_receipt.payment_id.
+                This is the actual payment transaction ID. DO NOT use payment_mandate_id
+                or payment_details_id or request_id. Only use payment_receipt.payment_id.
               - Price breakdown: item price, shipping, tax
               - Total price
               In a second block, show the shipping address. Format it all nicely.

@@ -75,12 +75,19 @@ _account_db = {
                 "alias": "Bugs's PayPal account",
             },
             "pay_by_bank1": {
-                "type": "PAY_BY_BANK",
+                "type": "TRUELAYER_VRP_MANDATE",
                 "brand": "TrueLayer",
                 "network": [{"name": "truelayer"}],
                 "account_number": "12345678",
-                "alias": "TrueLayer Pay by Bank",
+                "alias": "TrueLayer VRP mandate",
                 "vrp_mandate_id": os.getenv("TL_MANDATE_ID") or os.getenv("VRP_MANDATE_ID"),
+            },
+            "truelayer_sip1": {
+                "type": "TRUELAYER_SIP",
+                "brand": "TrueLayer",
+                "network": [{"name": "truelayer"}],
+                "account_number": "87654321",
+                "alias": "TrueLayer Single immediate payment (SIP)",
             },
         },
     },
@@ -173,14 +180,23 @@ def get_account_payment_methods(email_address: str) -> list[dict[str, Any]]:
     email_address: The account's email address.
 
   Returns:
-    A list of the user's payment_methods, with PAY_BY_BANK methods first.
+    A list of the user's payment_methods, with TrueLayer methods first.
   """
   payment_methods = list(
       _account_db.get(email_address, {}).get("payment_methods", {}).values()
   )
 
-  # Sort to show PAY_BY_BANK first
-  payment_methods.sort(key=lambda pm: (pm.get("type") != "PAY_BY_BANK", pm.get("alias", "")))
+  # Sort to show TrueLayer payment methods first (VRP mandate, then SIP)
+  def sort_key(pm):
+    pm_type = pm.get("type")
+    if pm_type == "TRUELAYER_VRP_MANDATE":
+      return (0, pm.get("alias", ""))
+    elif pm_type == "TRUELAYER_SIP":
+      return (1, pm.get("alias", ""))
+    else:
+      return (2, pm.get("alias", ""))
+
+  payment_methods.sort(key=sort_key)
 
   return payment_methods
 

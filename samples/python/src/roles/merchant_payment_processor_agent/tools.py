@@ -104,9 +104,15 @@ async def _handle_payment_mandate(
       payment_mandate.payment_mandate_contents.payment_response.method_name
   )
 
-  # Pay by bank payments skip the challenge and process immediately
-  if payment_method_type == "PAY_BY_BANK":
+  # TrueLayer VRP mandate payments skip the challenge and process immediately
+  if payment_method_type == "TRUELAYER_VRP_MANDATE":
     await _complete_payment(payment_mandate, updater, debug_mode)
+    return
+
+  # TrueLayer SIP payments require redirect authorization
+  if payment_method_type == "TRUELAYER_SIP":
+    # Initiate payment and return redirect URI
+    await _initiate_sip_payment(payment_mandate, updater, debug_mode)
     return
 
   # All other payment methods continue with existing challenge flow
@@ -122,6 +128,98 @@ async def _handle_payment_mandate(
         debug_mode,
     )
     return
+
+
+async def _initiate_sip_payment(
+    payment_mandate: PaymentMandate,
+    updater: TaskUpdater,
+    debug_mode: bool = False,
+) -> None:
+  """Initiates a TrueLayer SIP payment and returns the redirect URI.
+
+  Args:
+    payment_mandate: The payment mandate.
+    updater: The task updater.
+    debug_mode: Whether the agent is in debug mode.
+  """
+  logging.info("Initiating SIP payment for mandate id %s...",
+               payment_mandate.payment_mandate_contents.payment_mandate_id)
+
+  payment_mandate_id = (
+      payment_mandate.payment_mandate_contents.payment_mandate_id
+  )
+  credentials_provider = _get_credentials_provider_client(payment_mandate)
+  payment_credential = await _request_payment_credential(
+      payment_mandate,
+      credentials_provider,
+      updater,
+      debug_mode,
+  )
+
+  # Extract user info from payment mandate
+  payment_response = payment_mandate.payment_mandate_contents.payment_response
+  shipping_address = payment_response.shipping_address
+
+  # Extract amount and currency from payment mandate
+  payment_total = payment_mandate.payment_mandate_contents.payment_details_total
+  amount = payment_total.amount.value
+  currency = payment_total.amount.currency
+
+  # Generate user ID
+  user_id = str(uuid.uuid4())
+  user_name = shipping_address.recipient if shipping_address else "Unknown"
+  user_email = payment_response.payer_email or "unknown@example.com"
+  user_phone = shipping_address.phone_number if shipping_address else "+00000000000"
+
+  logging.info(
+      "Calling TrueLayer SIP API for payment %s...",
+      payment_mandate_id,
+  )
+
+  try:
+    # Call TrueLayer SIP Payments API
+    truelayer_response = await _call_truelayer_sip_payments_api(
+        amount=amount,
+        currency=currency,
+        user_id=user_id,
+        user_name=user_name,
+        user_email=user_email,
+        user_phone=user_phone,
+    )
+    logging.info("TrueLayer SIP payment response: %s", truelayer_response)
+
+    # Extract redirect URI from hosted_page
+    redirect_uri = truelayer_response.get("hosted_page", {}).get("uri")
+    truelayer_payment_id = truelayer_response.get("id")
+
+    if redirect_uri:
+      logging.info("TrueLayer SIP redirect URI: %s", redirect_uri)
+      logging.info("TrueLayer SIP payment ID: %s", truelayer_payment_id)
+
+      # Store payment ID in state for later use when completing payment
+      redirect_data = {
+          "type": "redirect",
+          "redirect_uri": redirect_uri,
+          "payment_id": truelayer_payment_id,
+          "display_text": (
+              f"Please complete your payment authorization by visiting this link: {redirect_uri}"
+          ),
+      }
+      text_part = TextPart(
+          text="Please authorize your payment to complete the transaction."
+      )
+      data_part = DataPart(data={"sip_redirect": redirect_data})
+      message = updater.new_agent_message(
+          parts=[Part(root=text_part), Part(root=data_part)]
+      )
+      await updater.requires_input(message=message)
+    else:
+      raise ValueError("No redirect URI found in SIP payment response")
+
+  except Exception as e:
+    logging.error("TrueLayer SIP API call failed: %s", e)
+    error_message = _create_text_parts(f"SIP payment initiation failed: {e}")
+    await updater.failed(message=updater.new_agent_message(parts=error_message))
 
 
 async def _raise_challenge(
@@ -208,14 +306,14 @@ async def _complete_payment(
       debug_mode,
   )
 
-  # Check if this is a PAY_BY_BANK payment
+  # Check if this is a TRUELAYER_VRP_MANDATE payment
   payment_method_type = (
       payment_mandate.payment_mandate_contents.payment_response.method_name
   )
 
   truelayer_payment_id = None
 
-  if payment_method_type == "PAY_BY_BANK":
+  if payment_method_type == "TRUELAYER_VRP_MANDATE":
     # Extract VRP mandate ID from credentials
     vrp_mandate_id = payment_credential.get("vrp_mandate_id")
     if not vrp_mandate_id:
@@ -381,6 +479,101 @@ async def _call_truelayer_payments_api(
 
   # Prepare request headers
   url = f"https://api.{TL_DOMAIN}/payments"
+  headers = {
+      "Authorization": f"Bearer {access_token}",
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotency_key,
+      "Tl-Signature": tl_signature,
+  }
+
+  async with httpx.AsyncClient() as client:
+    response = await client.post(url, headers=headers, data=body)
+    response.raise_for_status()
+    return response.json()
+
+
+async def _call_truelayer_sip_payments_api(
+    amount: float,
+    currency: str,
+    user_id: str,
+    user_name: str,
+    user_email: str,
+    user_phone: str,
+) -> dict:
+  """Calls TrueLayer Payments API to create a Single Immediate Payment (SIP).
+
+  Args:
+    amount: Payment amount in major currency units (e.g., 10.50)
+    currency: Three-letter ISO currency code (e.g., "GBP")
+    user_id: User identifier
+    user_name: User's full name
+    user_email: User's email address
+    user_phone: User's phone number
+
+  Returns:
+    API response as dictionary
+  """
+  import httpx
+  import json
+  from truelayer_signing import sign_with_pem, HttpMethod
+
+  # Get credentials from environment
+  tl_domain = os.getenv("TL_DOMAIN")
+  tl_signing_key_id = os.getenv("TL_SIGNING_KEY_ID")
+  tl_signing_private_key = os.getenv("TL_SIGNING_PRIVATE_KEY")
+  tl_merchant_account_id = os.getenv("TL_MERCHANT_ACCOUNT_ID")
+  tl_beneficiary_name = os.getenv("TL_BENEFICIARY_NAME", "Merchant Name")
+  tl_return_uri = os.getenv("TL_RETURN_URI", "https://console.t7r.dev/redirect-page")
+
+  # Dynamically obtain access token
+  access_token = await _get_truelayer_access_token()
+
+  # Convert amount to minor units (e.g., dollars to cents)
+  amount_in_minor = int(amount * 100)
+
+  # Generate idempotency key
+  idempotency_key = str(uuid.uuid4())
+
+  # Prepare payload for SIP
+  # Note: Hardcoding GBP for TrueLayer API regardless of the payment mandate currency.
+  payload = {
+      "amount_in_minor": amount_in_minor,
+      "currency": "GBP",
+      "payment_method": {
+          "provider_selection": {
+              "type": "user_selected"
+          },
+          "type": "bank_transfer",
+          "beneficiary": {
+              "type": "merchant_account",
+              "account_holder_name": tl_beneficiary_name,
+              "merchant_account_id": tl_merchant_account_id,
+          }
+      },
+      "hosted_page": {
+        "return_uri": tl_return_uri
+      },
+      "user": {
+          "id": user_id,
+          "name": user_name,
+          "email": user_email,
+          "phone": user_phone,
+      }
+  }
+  body = json.dumps(payload, separators=(",", ":"))
+
+  # Generate TrueLayer signature
+  tl_signature = (
+      sign_with_pem(tl_signing_key_id, tl_signing_private_key)
+      .set_method(HttpMethod.POST)
+      .set_path("/payments")
+      .add_header("Idempotency-Key", idempotency_key)
+      .set_body(body)
+      .sign()
+  )
+
+  # Prepare request headers
+  url = f"https://api.{tl_domain}/payments"
   headers = {
       "Authorization": f"Bearer {access_token}",
       "Content-Type": "application/json",
