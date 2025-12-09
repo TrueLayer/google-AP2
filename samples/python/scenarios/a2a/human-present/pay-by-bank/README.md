@@ -38,14 +38,14 @@ This sample consists of:
 
 **1. Pay by Bank purchase**
 
-*   The merchant agent will advertise support for PAY_BY_BANK payment method through its
+*   The merchant agent will advertise support for TRUELAYER_VRP_MANDATE payment method through its
     agent card and through the CartMandate once shopping is complete.
 *   The preferred payment method in the user's wallet will be TrueLayer Pay by Bank
     enabled for instant payments.
 
 **2. Direct Payment Processing**
 
-*   Pay by Bank payments are processed directly without additional authentication
+*   TrueLayer VRP mandate payments are processed directly without additional authentication
     challenges, providing a streamlined payment experience.
 
 ## Executing the Example
@@ -147,7 +147,7 @@ This section walks you through a typical interaction with the sample.
     transaction information in a PaymentMandate and ask you to sign the
     mandate. It will initiate payment using the PaymentMandate.
 1.  **Direct Payment Processing**: The Merchant Payment Processor will process
-    the PAY_BY_BANK payment immediately without requiring additional authentication.
+    the TRUELAYER_VRP_MANDATE payment immediately without requiring additional authentication.
 1.  **Purchase Complete**: The payment will be processed instantly, and you'll
     receive a confirmation message and a digital receipt.
 

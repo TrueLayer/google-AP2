@@ -51,7 +51,7 @@ _PAYMENT_PROCESSORS_BY_PAYMENT_METHOD_TYPE = {
     "CARD": "http://localhost:8003/a2a/merchant_payment_processor_agent",
     "BANK_ACCOUNT": "http://localhost:8003/a2a/merchant_payment_processor_agent",
     "DIGITAL_WALLET": "http://localhost:8003/a2a/merchant_payment_processor_agent",
-    "PAY_BY_BANK": "http://localhost:8003/a2a/merchant_payment_processor_agent",
+    "TRUELAYER_VRP_MANDATE": "http://localhost:8003/a2a/merchant_payment_processor_agent",
 }
 
 # A placeholder for a JSON Web Token (JWT) used for merchant authorization.

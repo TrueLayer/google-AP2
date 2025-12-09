@@ -75,7 +75,7 @@ _account_db = {
                 "alias": "Bugs's PayPal account",
             },
             "pay_by_bank1": {
-                "type": "PAY_BY_BANK",
+                "type": "TRUELAYER_VRP_MANDATE",
                 "brand": "TrueLayer",
                 "network": [{"name": "truelayer"}],
                 "account_number": "12345678",
@@ -173,14 +173,14 @@ def get_account_payment_methods(email_address: str) -> list[dict[str, Any]]:
     email_address: The account's email address.
 
   Returns:
-    A list of the user's payment_methods, with PAY_BY_BANK methods first.
+    A list of the user's payment_methods, with TRUELAYER_VRP_MANDATE methods first.
   """
   payment_methods = list(
       _account_db.get(email_address, {}).get("payment_methods", {}).values()
   )
 
-  # Sort to show PAY_BY_BANK first
-  payment_methods.sort(key=lambda pm: (pm.get("type") != "PAY_BY_BANK", pm.get("alias", "")))
+  # Sort to show TRUELAYER_VRP_MANDATE first
+  payment_methods.sort(key=lambda pm: (pm.get("type") != "TRUELAYER_VRP_MANDATE", pm.get("alias", "")))
 
   return payment_methods
 

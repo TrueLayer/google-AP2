@@ -95,8 +95,8 @@ async def _handle_payment_mandate(
       payment_mandate.payment_mandate_contents.payment_response.method_name
   )
 
-  # Pay by bank payments skip the challenge and process immediately
-  if payment_method_type == "PAY_BY_BANK":
+  # TrueLayer VRP mandate payments skip the challenge and process immediately
+  if payment_method_type == "TRUELAYER_VRP_MANDATE":
     await _complete_payment(payment_mandate, updater, debug_mode)
     return
 
@@ -199,14 +199,14 @@ async def _complete_payment(
       debug_mode,
   )
 
-  # Check if this is a PAY_BY_BANK payment
+  # Check if this is a TRUELAYER_VRP_MANDATE payment
   payment_method_type = (
       payment_mandate.payment_mandate_contents.payment_response.method_name
   )
 
   truelayer_payment_id = None
 
-  if payment_method_type == "PAY_BY_BANK":
+  if payment_method_type == "TRUELAYER_VRP_MANDATE":
     # Extract VRP mandate ID from credentials
     vrp_mandate_id = payment_credential.get("vrp_mandate_id")
     if not vrp_mandate_id:

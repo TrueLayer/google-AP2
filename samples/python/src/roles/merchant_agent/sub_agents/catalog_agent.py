@@ -119,7 +119,7 @@ async def _create_and_add_cart_mandate_artifact(
               data={"network": ["paypal"]},
           ),
           PaymentMethodData(
-              supported_methods="PAY_BY_BANK",
+              supported_methods="TRUELAYER_VRP_MANDATE",
               data={"network": ["truelayer"]},
           ),
       ],
