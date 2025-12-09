@@ -122,6 +122,10 @@ async def _create_and_add_cart_mandate_artifact(
               supported_methods="TRUELAYER_VRP_MANDATE",
               data={"network": ["truelayer"]},
           ),
+          PaymentMethodData(
+              supported_methods="TRUELAYER_SIP",
+              data={"network": ["truelayer"]},
+          ),
       ],
       details=PaymentDetailsInit(
           id=f"order_{item_count}",
