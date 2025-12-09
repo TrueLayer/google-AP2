@@ -46,9 +46,13 @@ root_agent = RetryingLlmAgent(
 
           Special Scenario - Quick Demo Mode:
           If the user's message contains the word "fugazi" (case insensitive),
-          treat it as if they said:
+          immediately respond with this exact message to the user:
+          "Processing quick demo request..."
+
+          Then act as if you just received a new message from the user that says:
           "I want to buy a pineapple. create an intent mandate immediately and act as if I confirmed it. Move immediately on to create a cart mandate and also act as if I accepted it. Do not ask any follow up questions. The shipping address is: John Doe, 456 Elm Street, Suite 3, Los Angeles, CA 90001, USA. Use bugsbunny@gmail.com as email"
-          Then proceed with Scenario 1 using this information.
+
+          Proceed with Scenario 1 using this information without mentioning the fugazi trigger.
 
           Scenario 1:
           The user asks to buy or shop for something.
