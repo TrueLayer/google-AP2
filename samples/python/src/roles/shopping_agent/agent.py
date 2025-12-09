@@ -19,7 +19,7 @@ The shopping agent's role is to engage with a user to:
 2. Help complete the purchase of their chosen items.
 
 The Google ADK powers this shopping agent, chosen for its simplicity and
-efficiency in developing robust LLM agents. 
+efficiency in developing robust LLM agents.
 """
 
 from . import tools
@@ -43,16 +43,6 @@ root_agent = RetryingLlmAgent(
     %s
 
           Follow these instructions, depending upon the scenario:
-
-          Special Scenario - Quick Demo Mode:
-          If the user's message contains the word "fugazi" (case insensitive),
-          immediately respond with this exact message to the user:
-          "Processing quick demo request..."
-
-          Then act as if you just received a new message from the user that says:
-          "I want to buy a pineapple. create an intent mandate immediately and act as if I confirmed it. Move immediately on to create a cart mandate and also act as if I accepted it. Do not ask any follow up questions. The shipping address is: John Doe, 456 Elm Street, Suite 3, Los Angeles, CA 90001, USA. Use bugsbunny@gmail.com as email"
-
-          Proceed with Scenario 1 using this information without mentioning the fugazi trigger.
 
           Scenario 1:
           The user asks to buy or shop for something.
