@@ -181,7 +181,7 @@ async def _initiate_sip_payment(
 
   try:
     # Call TrueLayer SIP Payments API
-    truelayer_response = await _call_truelayer_sip_payments_api(
+    truelayer_response = await _call_truelayer_payments_api_sip(
         amount=amount,
         currency=currency,
         user_id=user_id,
@@ -338,7 +338,7 @@ async def _complete_payment(
 
     try:
       # Call TrueLayer Payments API
-      truelayer_response = await _call_truelayer_payments_api(
+      truelayer_response = await _call_truelayer_payments_api_vrp(
           vrp_mandate_id=vrp_mandate_id,
           amount=amount,
           currency=currency,
@@ -423,7 +423,7 @@ async def _get_truelayer_access_token() -> str:
     return access_token
 
 
-async def _call_truelayer_payments_api(
+async def _call_truelayer_payments_api_vrp(
     vrp_mandate_id: str,
     amount: float,
     currency: str,
@@ -452,7 +452,7 @@ async def _call_truelayer_payments_api(
 
   # Generate payment method reference (max 18 chars)
   import random
-  payment_method_reference = f"ap2-test-{random.randint(1, 1000)}"
+  payment_method_reference = f"ap2-vrp-test-{random.randint(1, 1000)}"
 
   # Prepare payload with consistent JSON formatting for signature
   # Note: Hardcoding GBP for TrueLayer API regardless of the payment mandate currency.
@@ -495,7 +495,7 @@ async def _call_truelayer_payments_api(
     return response.json()
 
 
-async def _call_truelayer_sip_payments_api(
+async def _call_truelayer_payments_api_sip(
     amount: float,
     currency: str,
     user_id: str,
