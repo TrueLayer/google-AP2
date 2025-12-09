@@ -25,6 +25,10 @@ import os
 from typing import Any
 import uuid
 
+import httpx
+import json
+from truelayer_signing import sign_with_pem, HttpMethod
+
 from a2a.server.tasks.task_updater import TaskUpdater
 from a2a.types import DataPart
 from a2a.types import Part
@@ -42,7 +46,12 @@ from common.a2a_extension_utils import EXTENSION_URI
 from common.a2a_message_builder import A2aMessageBuilder
 from common.payment_remote_a2a_client import PaymentRemoteA2aClient
 
-
+# Get credentials from environment
+TL_DOMAIN = os.getenv("TL_DOMAIN")
+TL_SIGNING_KEY_ID = os.getenv("TL_SIGNING_KEY_ID")
+TL_SIGNING_PRIVATE_KEY = os.getenv("TL_SIGNING_PRIVATE_KEY")
+TL_CLIENT_ID = os.getenv("TL_CLIENT_ID")
+TL_CLIENT_SECRET = os.getenv("TL_CLIENT_SECRET")
 
 async def initiate_payment(
     data_parts: list[dict[str, Any]],
@@ -288,21 +297,14 @@ async def _get_truelayer_access_token() -> str:
   Returns:
     Access token string
   """
-  import httpx
-
-  # Get credentials from environment
-  tl_domain = os.getenv("TL_DOMAIN")
-  client_id = os.getenv("TL_CLIENT_ID")
-  client_secret = os.getenv("TL_CLIENT_SECRET")
-
-  token_url = f"https://auth.{tl_domain}/connect/token"
+  token_url = f"https://auth.{TL_DOMAIN}/connect/token"
 
   logging.info("Requesting TrueLayer access token from %s...", token_url)
 
   # Prepare form data
   form_data = {
-      "client_id": client_id,
-      "client_secret": client_secret,
+      "client_id": TL_CLIENT_ID,
+      "client_secret": TL_CLIENT_SECRET,
       "grant_type": "client_credentials",
       "scope": "payments recurring_payments:sweeping recurring_payments:commercial",
   }
@@ -337,14 +339,6 @@ async def _call_truelayer_payments_api(
   Returns:
     API response as dictionary
   """
-  import httpx
-  import json
-  from truelayer_signing import sign_with_pem, HttpMethod
-
-  # Get credentials from environment
-  tl_domain = os.getenv("TL_DOMAIN")
-  tl_signing_key_id = os.getenv("TL_SIGNING_KEY_ID")
-  tl_signing_private_key = os.getenv("TL_SIGNING_PRIVATE_KEY")
 
   # Dynamically obtain access token
   access_token = await _get_truelayer_access_token()
@@ -377,7 +371,7 @@ async def _call_truelayer_payments_api(
 
   # Generate TrueLayer signature
   tl_signature = (
-      sign_with_pem(tl_signing_key_id, tl_signing_private_key)
+      sign_with_pem(TL_SIGNING_KEY_ID, TL_SIGNING_PRIVATE_KEY)
       .set_method(HttpMethod.POST)
       .set_path("/payments")
       .add_header("Idempotency-Key", idempotency_key)
@@ -386,7 +380,7 @@ async def _call_truelayer_payments_api(
   )
 
   # Prepare request headers
-  url = f"https://api.{tl_domain}/payments"
+  url = f"https://api.{TL_DOMAIN}/payments"
   headers = {
       "Authorization": f"Bearer {access_token}",
       "Content-Type": "application/json",
