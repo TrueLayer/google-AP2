@@ -271,6 +271,44 @@ def _challenge_response_is_valid(challenge_response: str) -> bool:
   return challenge_response == "123"
 
 
+async def _get_truelayer_access_token() -> str:
+  """Obtains an access token from TrueLayer OAuth endpoint.
+
+  Returns:
+    Access token string
+  """
+  import httpx
+
+  # Get credentials from environment
+  tl_domain = os.getenv("TL_DOMAIN")
+  client_id = os.getenv("TL_CLIENT_ID")
+  client_secret = os.getenv("TL_CLIENT_SECRET")
+
+  token_url = f"https://auth.{tl_domain}/connect/token"
+
+  logging.info("Requesting TrueLayer access token from %s...", token_url)
+
+  # Prepare form data
+  form_data = {
+      "client_id": client_id,
+      "client_secret": client_secret,
+      "grant_type": "client_credentials",
+      "scope": "payments recurring_payments:sweeping recurring_payments:commercial",
+  }
+
+  async with httpx.AsyncClient() as client:
+    response = await client.post(
+        token_url,
+        data=form_data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    response.raise_for_status()
+    token_data = response.json()
+    access_token = token_data["access_token"]
+    logging.info("Successfully obtained TrueLayer access token")
+    return access_token
+
+
 async def _call_truelayer_payments_api(
     vrp_mandate_id: str,
     amount: float,
@@ -293,9 +331,12 @@ async def _call_truelayer_payments_api(
   from truelayer_signing import sign_with_pem, HttpMethod
 
   # Get credentials from environment
-  TRUELAYER_BEARER_TOKEN = os.getenv("TRUELAYER_BEARER_TOKEN")
-  TL_SIGNING_KEY_ID = os.getenv("TL_SIGNING_KEY_ID")
-  TL_SIGNING_PRIVATE_KEY = os.getenv("TL_SIGNING_PRIVATE_KEY")
+  tl_domain = os.getenv("TL_DOMAIN")
+  tl_signing_key_id = os.getenv("TL_SIGNING_KEY_ID")
+  tl_signing_private_key = os.getenv("TL_SIGNING_PRIVATE_KEY")
+
+  # Dynamically obtain access token
+  access_token = await _get_truelayer_access_token()
 
   # Convert amount to minor units (e.g., dollars to cents)
   amount_in_minor = int(amount * 100)
@@ -320,7 +361,7 @@ async def _call_truelayer_payments_api(
 
   # Generate TrueLayer signature
   tl_signature = (
-      sign_with_pem(TL_SIGNING_KEY_ID, TL_SIGNING_PRIVATE_KEY)
+      sign_with_pem(tl_signing_key_id, tl_signing_private_key)
       .set_method(HttpMethod.POST)
       .set_path("/payments")
       .add_header("Idempotency-Key", idempotency_key)
@@ -329,9 +370,9 @@ async def _call_truelayer_payments_api(
   )
 
   # Prepare request headers
-  url = "https://api.t7r.dev/payments"
+  url = f"https://api.{tl_domain}/payments"
   headers = {
-      "Authorization": f"Bearer {TRUELAYER_BEARER_TOKEN}",
+      "Authorization": f"Bearer {access_token}",
       "Content-Type": "application/json",
       "Idempotency-Key": idempotency_key,
       "Tl-Signature": tl_signature,
