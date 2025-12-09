@@ -84,11 +84,16 @@ root_agent = RetryingLlmAgent(
               from it and then call the `initiate_payment_with_otp`
               tool to retry the payment. Surface the result to the user.
           14. If the response is a success or confirmation, create a block of
-              text titled 'Payment Receipt'. Ensure its contents includes
-              price, shipping, tax and total price. In a second block, show the
-              shipping address. Format it all nicely. In a third block, show the
-              user's payment method alias. Format it nicely and give it to the
-              user.
+              text titled 'Payment Receipt'. Use the payment_receipt object
+              from state. Display the following:
+              - Payment ID: CRITICAL - You MUST use the field payment_receipt.payment_id.
+                This is the actual payment transaction ID. DO NOT use payment_mandate_id
+                or payment_details_id or request_id. Only use payment_receipt.payment_id.
+              - Price breakdown: item price, shipping, tax
+              - Total price
+              In a second block, show the shipping address. Format it all nicely.
+              In a third block, show the user's payment method alias. Format
+              it nicely and give it to the user.
 
          Scenario 2:
          The user first wants you to describe all the data passed between you,

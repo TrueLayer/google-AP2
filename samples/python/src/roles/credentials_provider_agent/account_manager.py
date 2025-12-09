@@ -63,21 +63,31 @@ _account_db = {
             },
             "bank_account1": {
                 "type": "BANK_ACCOUNT",
+                "network": [{"name": "generic_bank"}],
                 "account_number": "111",
                 "alias": "Primary bank account",
             },
             "digital_wallet1": {
                 "type": "DIGITAL_WALLET",
                 "brand": "PayPal",
+                "network": [{"name": "paypal"}],
                 "account_identifier": "foo@bar.com",
                 "alias": "Bugs's PayPal account",
             },
             "pay_by_bank1": {
-                "type": "PAY_BY_BANK",
+                "type": "TRUELAYER_VRP_MANDATE",
                 "brand": "TrueLayer",
+                "network": [{"name": "truelayer"}],
                 "account_number": "12345678",
-                "alias": "TrueLayer Pay by Bank",
-                "vrp_mandate_id": os.getenv("VRP_MANDATE_ID"),
+                "alias": "TrueLayer VRP mandate",
+                "vrp_mandate_id": os.getenv("TL_MANDATE_ID") or os.getenv("VRP_MANDATE_ID"),
+            },
+            "truelayer_sip1": {
+                "type": "TRUELAYER_SIP",
+                "brand": "TrueLayer",
+                "network": [{"name": "truelayer"}],
+                "account_number": "87654321",
+                "alias": "TrueLayer Single immediate payment (SIP)",
             },
         },
     },
@@ -170,12 +180,25 @@ def get_account_payment_methods(email_address: str) -> list[dict[str, Any]]:
     email_address: The account's email address.
 
   Returns:
-    A list of the user's payment_methods.
+    A list of the user's payment_methods, with TrueLayer methods first.
   """
-
-  return list(
+  payment_methods = list(
       _account_db.get(email_address, {}).get("payment_methods", {}).values()
   )
+
+  # Sort to show TrueLayer payment methods first (VRP mandate, then SIP)
+  def sort_key(pm):
+    pm_type = pm.get("type")
+    if pm_type == "TRUELAYER_VRP_MANDATE":
+      return (0, pm.get("alias", ""))
+    elif pm_type == "TRUELAYER_SIP":
+      return (1, pm.get("alias", ""))
+    else:
+      return (2, pm.get("alias", ""))
+
+  payment_methods.sort(key=sort_key)
+
+  return payment_methods
 
 
 def get_account_shipping_address(email_address: str) -> dict[str, Any]:
