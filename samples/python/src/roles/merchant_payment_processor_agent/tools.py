@@ -52,6 +52,9 @@ TL_SIGNING_KEY_ID = os.getenv("TL_SIGNING_KEY_ID")
 TL_SIGNING_PRIVATE_KEY = os.getenv("TL_SIGNING_PRIVATE_KEY")
 TL_CLIENT_ID = os.getenv("TL_CLIENT_ID")
 TL_CLIENT_SECRET = os.getenv("TL_CLIENT_SECRET")
+TL_MERCHANT_ACCOUNT_ID = os.getenv("TL_MERCHANT_ACCOUNT_ID")
+TL_BENEFICIARY_NAME = os.getenv("TL_BENEFICIARY_NAME", "Merchant Name")
+TL_RETURN_URI = os.getenv("TL_RETURN_URI", "https://console.t7r.dev/redirect-page")
 
 async def initiate_payment(
     data_parts: list[dict[str, Any]],
@@ -513,17 +516,6 @@ async def _call_truelayer_sip_payments_api(
   Returns:
     API response as dictionary
   """
-  import httpx
-  import json
-  from truelayer_signing import sign_with_pem, HttpMethod
-
-  # Get credentials from environment
-  tl_domain = os.getenv("TL_DOMAIN")
-  tl_signing_key_id = os.getenv("TL_SIGNING_KEY_ID")
-  tl_signing_private_key = os.getenv("TL_SIGNING_PRIVATE_KEY")
-  tl_merchant_account_id = os.getenv("TL_MERCHANT_ACCOUNT_ID")
-  tl_beneficiary_name = os.getenv("TL_BENEFICIARY_NAME", "Merchant Name")
-  tl_return_uri = os.getenv("TL_RETURN_URI", "https://console.t7r.dev/redirect-page")
 
   # Dynamically obtain access token
   access_token = await _get_truelayer_access_token()
@@ -546,12 +538,12 @@ async def _call_truelayer_sip_payments_api(
           "type": "bank_transfer",
           "beneficiary": {
               "type": "merchant_account",
-              "account_holder_name": tl_beneficiary_name,
-              "merchant_account_id": tl_merchant_account_id,
+              "account_holder_name": TL_BENEFICIARY_NAME,
+              "merchant_account_id": TL_MERCHANT_ACCOUNT_ID,
           }
       },
       "hosted_page": {
-        "return_uri": tl_return_uri
+        "return_uri": TL_RETURN_URI
       },
       "user": {
           "id": user_id,
@@ -563,17 +555,20 @@ async def _call_truelayer_sip_payments_api(
   body = json.dumps(payload, separators=(",", ":"))
 
   # Generate TrueLayer signature
-  tl_signature = (
-      sign_with_pem(tl_signing_key_id, tl_signing_private_key)
-      .set_method(HttpMethod.POST)
-      .set_path("/payments")
-      .add_header("Idempotency-Key", idempotency_key)
-      .set_body(body)
-      .sign()
-  )
+  try:
+    tl_signature = (
+        sign_with_pem(TL_SIGNING_KEY_ID, TL_SIGNING_PRIVATE_KEY)
+        .set_method(HttpMethod.POST)
+        .set_path("/payments")
+        .add_header("Idempotency-Key", idempotency_key)
+        .set_body(body)
+        .sign()
+    )
+  except Exception as e:
+    logging.error("Error generating TrueLayer signature: %s", e)
 
   # Prepare request headers
-  url = f"https://api.{tl_domain}/payments"
+  url = f"https://api.{TL_DOMAIN}/payments"
   headers = {
       "Authorization": f"Bearer {access_token}",
       "Content-Type": "application/json",
