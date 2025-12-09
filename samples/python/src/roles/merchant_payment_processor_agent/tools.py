@@ -304,6 +304,9 @@ async def _call_truelayer_payments_api(
   idempotency_key = str(uuid.uuid4())
 
   # Prepare payload with consistent JSON formatting for signature
+  # Note: Hardcoding GBP for TrueLayer API regardless of the payment mandate currency.
+  # In a real implementation, currency conversion would be handled, but for this demo
+  # we don't care about the currency mismatch.
   payload = {
       "payment_method": {
           "type": "mandate",
@@ -311,7 +314,7 @@ async def _call_truelayer_payments_api(
       },
       "amount_in_minor": amount_in_minor,
       "reference": reference,
-      "currency": currency,
+      "currency": "GBP",
   }
   body = json.dumps(payload, separators=(",", ":"))
 
