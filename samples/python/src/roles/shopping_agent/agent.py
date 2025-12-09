@@ -85,10 +85,11 @@ root_agent = RetryingLlmAgent(
               tool to retry the payment. Surface the result to the user.
           14. If the response is a success or confirmation, create a block of
               text titled 'Payment Receipt'. Ensure its contents includes
-              price, shipping, tax and total price. In a second block, show the
-              shipping address. Format it all nicely. In a third block, show the
-              user's payment method alias. Format it nicely and give it to the
-              user.
+              the payment ID (label it as "TrueLayer Payment ID" if the payment
+              method is PAY_BY_BANK), price, shipping, tax and total price. In a
+              second block, show the shipping address. Format it all nicely. In a
+              third block, show the user's payment method alias. Format it nicely
+              and give it to the user.
 
          Scenario 2:
          The user first wants you to describe all the data passed between you,

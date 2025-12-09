@@ -63,18 +63,21 @@ _account_db = {
             },
             "bank_account1": {
                 "type": "BANK_ACCOUNT",
+                "network": [{"name": "generic_bank"}],
                 "account_number": "111",
                 "alias": "Primary bank account",
             },
             "digital_wallet1": {
                 "type": "DIGITAL_WALLET",
                 "brand": "PayPal",
+                "network": [{"name": "paypal"}],
                 "account_identifier": "foo@bar.com",
                 "alias": "Bugs's PayPal account",
             },
             "pay_by_bank1": {
                 "type": "PAY_BY_BANK",
                 "brand": "TrueLayer",
+                "network": [{"name": "truelayer"}],
                 "account_number": "12345678",
                 "alias": "TrueLayer Pay by Bank",
                 "vrp_mandate_id": os.getenv("VRP_MANDATE_ID"),

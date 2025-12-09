@@ -85,7 +85,7 @@ async def find_items_workflow(
           item, item_count, current_time, updater
       )
     risk_data = _collect_risk_data(updater)
-    updater.add_artifact([
+    await updater.add_artifact([
         Part(root=DataPart(data={"risk_data": risk_data})),
     ])
     await updater.complete()
@@ -107,9 +107,21 @@ async def _create_and_add_cart_mandate_artifact(
   payment_request = PaymentRequest(
       method_data=[
           PaymentMethodData(
+              supported_methods="CARD",
+              data={"network": ["amex"]},
+          ),
+          PaymentMethodData(
+              supported_methods="BANK_ACCOUNT",
+              data={"network": ["generic_bank"]},
+          ),
+          PaymentMethodData(
+              supported_methods="DIGITAL_WALLET",
+              data={"network": ["paypal"]},
+          ),
+          PaymentMethodData(
               supported_methods="PAY_BY_BANK",
-              data={},
-          )
+              data={"network": ["truelayer"]},
+          ),
       ],
       details=PaymentDetailsInit(
           id=f"order_{item_count}",

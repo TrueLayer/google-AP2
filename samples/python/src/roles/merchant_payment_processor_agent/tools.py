@@ -100,7 +100,7 @@ async def _handle_payment_mandate(
     await _complete_payment(payment_mandate, updater, debug_mode)
     return
 
-  # Card payments continue with existing challenge flow
+  # All other payment methods continue with existing challenge flow
   if current_task is None:
     await _raise_challenge(updater)
     return
@@ -224,6 +224,7 @@ async def _complete_payment(
         vrp_mandate_id,
     )
 
+    truelayer_payment_id = None
     try:
       # Call TrueLayer Payments API
       truelayer_response = await _call_truelayer_payments_api(
@@ -233,6 +234,10 @@ async def _complete_payment(
           reference=reference,
       )
       logging.info("TrueLayer payment response: %s", truelayer_response)
+      # Extract TrueLayer payment ID from response
+      truelayer_payment_id = truelayer_response.get("id")
+      if truelayer_payment_id:
+        logging.info("TrueLayer payment ID: %s", truelayer_payment_id)
     except Exception as e:
       logging.error("TrueLayer API call failed: %s", e)
       # Continue with creating receipt for demo purposes
@@ -244,8 +249,11 @@ async def _complete_payment(
         payment_credential,
     )
 
-  # Call issuer to complete the payment
-  payment_receipt = _create_payment_receipt(payment_mandate)
+  # Create payment receipt, using TrueLayer payment ID if available
+  payment_receipt = _create_payment_receipt(
+      payment_mandate,
+      payment_id=truelayer_payment_id if payment_method_type == "PAY_BY_BANK" else None
+  )
   await _send_payment_receipt_to_credentials_provider(
       payment_receipt,
       credentials_provider,
@@ -422,16 +430,22 @@ async def _request_payment_credential(
   return payment_credential
 
 
-def _create_payment_receipt(payment_mandate: PaymentMandate) -> PaymentReceipt:
+def _create_payment_receipt(
+    payment_mandate: PaymentMandate,
+    payment_id: str | None = None
+) -> PaymentReceipt:
   """Creates a payment receipt.
 
   Args:
     payment_mandate: The PaymentMandate containing payment details.
+    payment_id: Optional payment ID. If not provided, generates a random UUID.
 
   Returns:
     The PaymentReceipt containing payment receipt details.
   """
-  payment_id = uuid.uuid4().hex
+  if payment_id is None:
+    payment_id = uuid.uuid4().hex
+
   return PaymentReceipt(
       payment_mandate_id=payment_mandate.payment_mandate_contents.payment_mandate_id,
       timestamp=datetime.now(timezone.utc).isoformat(),
