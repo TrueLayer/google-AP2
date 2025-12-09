@@ -328,6 +328,61 @@ def _generate_payment_mandate_hash(
   )
 
 
+async def get_payment_status(
+    payment_id: str,
+    tool_context: ToolContext,
+    debug_mode: bool = False,
+) -> dict:
+  """Query the merchant agent for payment status.
+
+  This tool polls the merchant agent to check if a payment has been completed.
+  It should be called repeatedly after payment initiation until the payment
+  is completed.
+
+  Args:
+    payment_id: The payment ID from the payment processor (e.g., TrueLayer).
+    tool_context: The ADK supplied tool context.
+    debug_mode: Whether the agent is in debug mode.
+
+  Returns:
+    Dictionary containing payment status information.
+  """
+  message = (
+      A2aMessageBuilder()
+      .set_context_id(tool_context.state["shopping_context_id"])
+      .add_text("Get payment status")
+      .add_data("payment_id", payment_id)
+      .add_data("shopping_agent_id", "trusted_shopping_agent")
+      .add_data("debug_mode", debug_mode)
+      .build()
+  )
+
+  task = await merchant_agent_client.send_a2a_message(message)
+
+  # Extract payment status from artifacts
+  payment_status = None
+  transaction_id = None
+
+  if task.artifacts:
+    for i, artifact in enumerate(task.artifacts):
+      if hasattr(artifact, 'parts') and artifact.parts:
+        for j, part in enumerate(artifact.parts):
+          if hasattr(part, 'root'):
+            root = part.root
+            if hasattr(root, 'data'):
+              data = root.data
+              payment_status = data.get("payment_status")
+              transaction_id = data.get("transaction_id")
+              
+  result = {
+      "payment_status": payment_status or "UNKNOWN",
+      "transaction_id": transaction_id,
+      "payment_id": payment_id,
+  }
+
+  logging.info("Returning result: %s", result)
+  return result
+
 def _parse_cart_mandates(artifacts: list[Artifact]) -> list[CartMandate]:
   """Parses a list of artifacts into a list of CartMandate objects."""
   return artifact_utils.find_canonical_objects(

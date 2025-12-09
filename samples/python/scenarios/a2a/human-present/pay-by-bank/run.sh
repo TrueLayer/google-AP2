@@ -116,6 +116,10 @@ echo "-> Starting the Payment Processor Agent (port:8003 log:$LOG_DIR/mpp_agent.
 $UV_RUN_CMD --package ap2-samples python -m roles.merchant_payment_processor_agent >"$LOG_DIR/mpp_agent.log" 2>&1 &
 pids+=($!)
 
+echo "-> Starting the Webhook Service (port:8004 log:$LOG_DIR/webhook_service.log)..."
+$UV_RUN_CMD --package ap2-samples python -m roles.webhook_service >"$LOG_DIR/webhook_service.log" 2>&1 &
+pids+=($!)
+
 echo ""
 echo "All remote servers are starting."
 

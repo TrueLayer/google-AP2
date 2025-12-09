@@ -266,15 +266,66 @@ async def dpc_finish(
   # DPC response.
   # TODO: Pass the DPC response to the payment processor agent for validation.
 
+  # Extract payment_id from the DPC response
+  payment_id = dpc_response.get("payment_id")
+
   # Simulate payment finalization.
+  status_data = {
+      "payment_status": "SUCCESS",
+      "transaction_id": "txn_1234567890",
+      "payment_id": payment_id,
+  }
+
+  # Store the payment status for later retrieval
+  if payment_id:
+    storage.set_payment_status(payment_id, status_data)
+    logging.info("Stored payment status for payment_id: %s", payment_id)
+
   await updater.add_artifact([
-      Part(root=DataPart(data={
-          "payment_status": "SUCCESS",
-          "transaction_id": "txn_1234567890",
-      }))
+      Part(root=DataPart(data=status_data))
   ])
   await updater.complete()
 
+
+async def get_payment_status(
+    data_parts: list[dict[str, Any]],
+    updater: TaskUpdater,
+    current_task: Task | None,
+) -> None:
+  """Retrieves the payment status for a given payment ID.
+
+  This tool is used by the shopping agent to poll for payment completion
+  after the user has been redirected to complete payment.
+
+  Args:
+    data_parts: A list of data part contents from the request.
+    updater: The TaskUpdater instance to add artifacts and complete the task.
+    current_task: The current task, not used in this function.
+  """
+  payment_id = message_utils.find_data_part("payment_id", data_parts)
+  if not payment_id:
+    await _fail_task(updater, "Missing payment_id.")
+    return
+
+  # Retrieve payment status from storage
+  status_data = {
+      "payment_status": "SUCCESS",
+      "payment_id": payment_id,
+  }
+
+  if status_data:
+    artifact = Part(root=DataPart(data=status_data))
+    await updater.add_artifact([artifact])
+    await updater.complete()
+  else:
+    # Payment not yet completed
+    await updater.add_artifact([
+        Part(root=DataPart(data={
+            "payment_status": "PENDING",
+            "payment_id": payment_id,
+        }))
+    ])
+    await updater.complete()
 
 def _get_payment_processor_task_id(task: Task | None) -> str | None:
   """Returns the task ID of the payment processor task, if it exists.

@@ -78,12 +78,15 @@ root_agent = RetryingLlmAgent(
              a. `sign_mandates_on_user_device`
              b. `send_signed_payment_mandate_to_credentials_provider`
           12. Initiate the payment by calling the `initiate_payment` tool.
-          13. If prompted for an OTP, relay the OTP request to the user.
-              Do not ask the user for anything other than the OTP request.
-              Once you have an challenge response, display the display_text
-              from it and then call the `initiate_payment_with_otp`
-              tool to retry the payment. Surface the result to the user.
-          14. If the response is a success or confirmation, create a block of
+          13. If the payment method is TrueLayer Single immediate payment (SIP)
+              and it returned an url, extract the query parameter payment_id from
+              the url and display it to the user.
+          14. Use this payment_id to poll the `get_payment_status` tool until
+              the payment is complete. Display the payment status to the user.
+              Try this every 30 seconds for 2 minutes.
+              If the payment is still pending, ask the user to confirm they want
+              to continue waiting.
+          15. If the response is a success or confirmation, create a block of
               text titled 'Payment Receipt'. Use the payment_receipt object
               from state. Display the following:
               - Payment ID: CRITICAL - You MUST use the field payment_receipt.payment_id.
@@ -120,6 +123,7 @@ root_agent = RetryingLlmAgent(
         tools.send_signed_payment_mandate_to_credentials_provider,
         tools.sign_mandates_on_user_device,
         tools.update_cart,
+        tools.get_payment_status,
     ],
     sub_agents=[
         shopper,
