@@ -382,6 +382,62 @@ async def get_payment_status(
   logging.info("Returning result: %s", result)
   return result
 
+
+async def get_mandate_status(
+    mandate_id: str,
+    tool_context: ToolContext,
+    debug_mode: bool = False,
+) -> dict:
+  """Query the merchant agent for mandate status.
+
+  This tool asks the merchant agent to check if a mandate has been authorized.
+  It should be called repeatedly after mandate initiation until the mandate
+  is authorized.
+
+  Args:
+    mandate_id: The mandate ID from the payment processor (e.g., TrueLayer).
+    tool_context: The ADK supplied tool context.
+    debug_mode: Whether the agent is in debug mode.
+
+  Returns:
+    Dictionary containing mandate status information.
+  """
+  message = (
+      A2aMessageBuilder()
+      .set_context_id(tool_context.state["shopping_context_id"])
+      .add_text("Get mandate status")
+      .add_data("mandate_id", mandate_id)
+      .add_data("shopping_agent_id", "trusted_shopping_agent")
+      .add_data("debug_mode", debug_mode)
+      .build()
+  )
+
+  task = await merchant_agent_client.send_a2a_message(message)
+
+  # Extract mandate status from artifacts
+  mandate_status = None
+  mandate_details = None
+  if task.artifacts:
+    for i, artifact in enumerate(task.artifacts):
+      if hasattr(artifact, 'parts') and artifact.parts:
+        for j, part in enumerate(artifact.parts):
+          if hasattr(part, 'root'):
+            root = part.root
+            if hasattr(root, 'data'):
+              data = root.data
+              mandate_status = data.get("mandate_status")
+              mandate_details = data.get("mandate_details")
+
+  result = {
+      "mandate_status": mandate_status or "UNKNOWN",
+      "mandate_details": mandate_details,
+      "mandate_id": mandate_id,
+  }
+
+  logging.info("Returning result: %s", result)
+  return result
+
+
 def _parse_cart_mandates(artifacts: list[Artifact]) -> list[CartMandate]:
   """Parses a list of artifacts into a list of CartMandate objects."""
   return artifact_utils.find_canonical_objects(

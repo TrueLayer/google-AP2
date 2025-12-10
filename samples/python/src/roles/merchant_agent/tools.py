@@ -378,6 +378,83 @@ async def get_payment_status(
   ])
   await updater.complete()
 
+
+async def get_mandate_status(
+    data_parts: list[dict[str, Any]],
+    updater: TaskUpdater,
+    current_task: Task | None,
+    debug_mode: bool = False,
+) -> None:
+  """Retrieves the mandate status for a given mandate ID.
+
+  This tool is used by the shopping agent to poll for mandate authorization
+  after the user has been redirected to authorize the mandate.
+
+  Args:
+    data_parts: A list of data part contents from the request.
+    updater: The TaskUpdater instance to add artifacts and complete the task.
+    current_task: The current task, not used in this function.
+    debug_mode: Whether the agent is in debug mode.
+  """
+  mandate_id = message_utils.find_data_part("mandate_id", data_parts)
+  if not mandate_id:
+    await _fail_task(updater, "Missing mandate_id.")
+    return
+
+  # Retrieve mandate status from payment processor
+  payment_method_type = "TRUELAYER_VRP_MANDATE"
+  processor_url = _PAYMENT_PROCESSORS_BY_PAYMENT_METHOD_TYPE.get(
+      payment_method_type
+  )
+
+  if not processor_url:
+      await _fail_task(
+          updater, f"No payment processor found for method: {payment_method_type}"
+      )
+      return
+
+  payment_processor_agent = PaymentRemoteA2aClient(
+      name="payment_processor_agent",
+      base_url=processor_url,
+      required_extensions={
+          EXTENSION_URI,
+      },
+  )
+
+  message_builder = (
+      A2aMessageBuilder()
+      .set_context_id(updater.context_id)
+      .add_text("get mandate status")
+      .add_data("mandate_id", mandate_id)
+      .add_data("debug_mode", debug_mode)
+  )
+
+  payment_processor_task_id = _get_payment_processor_task_id(current_task)
+  if payment_processor_task_id:
+    message_builder.set_task_id(payment_processor_task_id)
+
+  task = await payment_processor_agent.send_a2a_message(message_builder.build())
+
+  mandate_id_result = artifact_utils.find_key(task.artifacts, "mandate_id")
+  mandate_status = artifact_utils.find_key(task.artifacts, "mandate_status")
+  mandate_details = artifact_utils.find_key(task.artifacts, "mandate_details")
+
+  result_data = {}
+  if mandate_id_result:
+    result_data["mandate_id"] = mandate_id_result[0]
+  if mandate_status:
+    result_data["mandate_status"] = mandate_status[0]
+  if mandate_details:
+    result_data["mandate_details"] = mandate_details[0]
+
+  await updater.add_artifact([
+      Part(
+          root=DataPart(data=result_data)
+      )
+  ])
+  await updater.complete()
+
+
 def _get_payment_processor_task_id(task: Task | None) -> str | None:
   """Returns the task ID of the payment processor task, if it exists.
 
