@@ -210,6 +210,57 @@ async def handle_payment_receipt(
   await updater.complete()
 
 
+async def handle_set_account_payment_method(
+    data_parts: list[dict[str, Any]],
+    updater: TaskUpdater,
+    current_task: Task | None,
+) -> None:
+  """Adds or updates a payment method for a user's account.
+
+  This tool allows external systems (like webhooks) to provision payment methods
+  for user accounts.
+
+  Args:
+    data_parts: DataPart contents. Should contain:
+      - email_address: The user's email address
+      - payment_method_id: Unique ID for this payment method (e.g., "card3")
+      - payment_method_type: Type of payment (e.g., "TRUELAYER_SIP", "CARD")
+      - payment_method_data: Dictionary with payment method details including "alias"
+    updater: The TaskUpdater instance for updating the task state.
+    current_task: The current task if there is one.
+  """
+  email_address = message_utils.find_data_part("email_address", data_parts)
+  payment_method_id = message_utils.find_data_part("payment_method_id", data_parts)
+  payment_method_type = message_utils.find_data_part("payment_method_type", data_parts)
+  payment_method_data = message_utils.find_data_part("payment_method_data", data_parts)
+
+  if not email_address:
+    raise ValueError("email_address is required for set_account_payment_method")
+  if not payment_method_id:
+    raise ValueError("payment_method_id is required for set_account_payment_method")
+  if not payment_method_type:
+    raise ValueError("payment_method_type is required for set_account_payment_method")
+  if not payment_method_data:
+    raise ValueError("payment_method_data is required for set_account_payment_method")
+
+  result = account_manager.set_account_payment_method(
+      email_address,
+      payment_method_id,
+      payment_method_type,
+      payment_method_data
+  )
+
+  await updater.add_artifact([
+      Part(root=DataPart(data={
+          "status": "success",
+          "email_address": email_address,
+          "payment_method_id": payment_method_id,
+          "payment_method": result
+      }))
+  ])
+  await updater.complete()
+
+
 def _get_payment_method_aliases(
     payment_methods: list[dict[str, Any]],
 ) -> list[str | None]:

@@ -80,8 +80,8 @@ root_agent = RetryingLlmAgent(
           12. Initiate the payment by calling the `initiate_payment` tool.
           13. If the payment method is TrueLayer Single immediate payment (SIP)
               display the returned url link to the user.
-              The url must be returned correct to the user,
-              it's a critical step and only a character that differs can lead to a failure.
+              CRITICAL: The url must be returned to the user exactly as is.
+               Do NOT shorten the url or change it in any way.
           14. Call the `get_payment_status` tools and display the payment status to the user.
               If the payment is failed, display the failure reason.
               If the payment is settled continue to the next step.
