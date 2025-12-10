@@ -80,11 +80,14 @@ root_agent = RetryingLlmAgent(
           12. Initiate the payment by calling the `initiate_payment` tool.
           13. If the payment method is TrueLayer Single immediate payment (SIP)
               display the returned url link to the user.
-          14. Call the `get_payment_status` tool every 30 seconds for 2 minutes or
-              until the payment is complete. Display the payment status to the user.
-              Try this every 30 seconds for 2 minutes.
-              If the payment is still pending, ask the user to confirm they want
-              to continue waiting.
+              The url must be returned correct to the user,
+              it's a critical step and only a character that differs can lead to a failure.
+          14. Call the `get_payment_status` tools and display the payment status to the user.
+              If the payment is failed, display the failure reason.
+              If the payment is settled continue to the next step.
+              If the payment is still pending retry this step every minute
+              for up to 5 minutes.
+              After 5 minutes ask the user to confirm they want to continue waiting.
           15. If prompted for an OTP, relay the OTP request to the user.
               Do not ask the user for anything other than the OTP request.
               Once you have an challenge response, display the display_text
