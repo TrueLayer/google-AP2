@@ -109,7 +109,7 @@ async def _handle_payment_mandate(
 
   # TrueLayer VRP mandate payments skip the challenge and process immediately
   if payment_method_type == "TRUELAYER_VRP_MANDATE":
-    await _complete_payment(payment_mandate, updater, debug_mode)
+    await _handle_vrp_mandate_payment(payment_mandate, updater, debug_mode)
     return
 
   # TrueLayer SIP payments require redirect authorization
@@ -315,7 +315,7 @@ async def _check_challenge_response_and_complete_payment(
     debug_mode: Whether the agent is in debug mode.
   """
   if _challenge_response_is_valid(challenge_response=challenge_response):
-    await _complete_payment(payment_mandate, updater, debug_mode)
+    await _handle_vrp_mandate_payment(payment_mandate, updater, debug_mode)
     return
 
   message = updater.new_agent_message(
@@ -324,7 +324,7 @@ async def _check_challenge_response_and_complete_payment(
   await updater.requires_input(message=message)
 
 
-async def _complete_payment(
+async def _handle_vrp_mandate_payment(
     payment_mandate: PaymentMandate,
     updater: TaskUpdater,
     debug_mode: bool = False,
