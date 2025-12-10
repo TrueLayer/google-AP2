@@ -362,7 +362,9 @@ async def _handle_vrp_mandate_payment(
     vrp_mandate_id = payment_credential.get("vrp_mandate_id")
     if not vrp_mandate_id:
       # we need to create the VRP mandate first of all
-      updater.requires_input()
+      # todo: call TL API to create a mandate
+      # todo: once the mandate is created, store the vrp_mandate_id in the payment credentials for future use, using the set_account_payment_method tool
+      # todo: return the mandate authorization link to the shopping agent
       raise ValueError("VRP mandate ID not found in payment credentials")
 
     # Extract amount and currency from payment mandate
@@ -781,30 +783,50 @@ async def _send_payment_receipt_to_credentials_provider(
 
 
 async def _send_vrp_mandate_id_to_credentials_provider(
-    user_id: str,
+    user_email: str,
     vrp_mandate_id: str,
     credentials_provider: PaymentRemoteA2aClient,
     updater: TaskUpdater,
     debug_mode: bool = False,
 ) -> None:
-  """Sends the vrp mandate id to the Credentials Provider.
+  """Sends the VRP mandate ID to the Credentials Provider to store as a payment method.
 
   Args:
-    user_id: email of the user.
-    vrp_mandate_id: id of the TL mandate id.
+    user_email: Email of the user.
+    vrp_mandate_id: ID of the TrueLayer VRP mandate.
     credentials_provider: The credentials provider client.
     updater: The task updater.
     debug_mode: Whether the agent is in debug mode.
   """
+  # Generate a unique payment method ID
+  payment_method_id = f"truelayer_vrp_{uuid.uuid4().hex[:8]}"
+
+  # Prepare payment method data matching the credentials provider's expected format
+  payment_method_data = {
+      "alias": f"TrueLayer VRP mandate {vrp_mandate_id[:8]}...",
+      "brand": "TrueLayer",
+      "network": [{"name": "truelayer"}],
+      "account_number": vrp_mandate_id[:8],
+      "vrp_mandate_id": vrp_mandate_id,
+  }
 
   message_builder = (
       A2aMessageBuilder()
       .set_context_id(updater.context_id)
-      .add_text("Here is the vrp mandate id along with the user id. Store this information in the database.")
-      .add_data("vrp_mandate_id", vrp_mandate_id)
-      .add_data("user_id", user_id)
+      .add_text("Store this VRP mandate as a payment method for the user.")
+      .add_data("email_address", user_email)
+      .add_data("payment_method_id", payment_method_id)
+      .add_data("payment_method_type", "TRUELAYER_VRP_MANDATE")
+      .add_data("payment_method_data", payment_method_data)
       .add_data("debug_mode", debug_mode)
   )
+
+  logging.info(
+      "Sending VRP mandate ID %s to credentials provider for user %s",
+      vrp_mandate_id,
+      user_email,
+  )
+
   await credentials_provider.send_a2a_message(message_builder.build())
 
 
