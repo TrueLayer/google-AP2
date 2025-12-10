@@ -1057,7 +1057,7 @@ async def _send_vrp_mandate_id_to_credentials_provider(
     debug_mode: Whether the agent is in debug mode.
   """
   # Generate a unique payment method ID
-  payment_method_id = f"truelayer_vrp_{uuid.uuid4().hex[:8]}"
+  payment_method_id = "truelayer_vrp"
 
   # Prepare payment method data matching the credentials provider's expected format
   payment_method_data = {

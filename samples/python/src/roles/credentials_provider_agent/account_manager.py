@@ -100,7 +100,7 @@ _account_db = {
                 "alias": "Main checking account",
                 "network": [{"name": "generic_bank"}],
             },
-            "truelayer_vrp1": {
+            "truelayer_vrp": {
               "type": "TRUELAYER_VRP_MANDATE",
               "brand": "TrueLayer",
               "network": [{"name": "truelayer"}],
