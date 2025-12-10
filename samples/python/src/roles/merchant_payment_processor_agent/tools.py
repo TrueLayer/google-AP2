@@ -731,7 +731,7 @@ async def _call_truelayer_mandates_api(
     user_name: str,
     user_email: str,
 ) -> dict:
-  """Calls TrueLayer Mandates API to create a sweeping mandate.
+  """Calls TrueLayer Mandates API to create a commercial mandate.
 
   Args:
     user_id: User identifier
@@ -749,16 +749,18 @@ async def _call_truelayer_mandates_api(
   idempotency_key = str(uuid.uuid4())
 
   # Get current time and set validity period
-  valid_from = datetime.now(timezone.utc).isoformat()
-  # Set valid_to to 1 year from now
+  # Format as ISO-8601 with milliseconds: YYYY-MM-DDTHH:mm:ss.sssZ
   from datetime import timedelta
-  valid_to = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+  now = datetime.now(timezone.utc)
+  valid_from = now.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+  # Set valid_to to 1 year from now
+  valid_to = (now + timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
   # Prepare payload for mandate creation
   # Note: Hardcoding constraints and beneficiary details for demo purposes
   payload = {
       "mandate": {
-          "type": "sweeping",
+          "type": "commercial",
           "provider_filter": {
               "countries": ["GB"],
               "release_channel": "private_beta",
@@ -781,7 +783,7 @@ async def _call_truelayer_mandates_api(
           "id": user_id,
           "name": user_name,
           "email": user_email,
-          "phone": "",
+          "phone": "+44123456789",
       },
       "constraints": {
           "valid_from": valid_from,
