@@ -133,6 +133,34 @@ async def _handle_payment_mandate(
     return
 
 
+async def _shorten_url(long_url: str) -> str:
+  """Shortens a URL using the is.gd URL shortening service.
+
+  Args:
+    long_url: The URL to shorten.
+
+  Returns:
+    The shortened URL, or the original URL if shortening fails.
+  """
+  try:
+    async with httpx.AsyncClient(verify=False) as client:
+      response = await client.get(
+          "https://is.gd/create.php",
+          params={"format": "simple", "url": long_url},
+          timeout=5.0,
+      )
+      if response.status_code == 200:
+        shortened = response.text.strip()
+        logging.info("Shortened URL from %s to %s", long_url, shortened)
+        return shortened
+      else:
+        logging.warning("URL shortening failed with status %s, using original URL", response.status_code)
+        return long_url
+  except Exception as e:
+    logging.warning("URL shortening failed: %s, using original URL", e)
+    return long_url
+
+
 async def _initiate_sip_payment(
     payment_mandate: PaymentMandate,
     updater: TaskUpdater,
@@ -208,13 +236,17 @@ async def _initiate_sip_payment(
       logging.info("TrueLayer SIP redirect URI: %s", redirect_uri)
       logging.info("TrueLayer SIP payment ID: %s", truelayer_payment_id)
 
+      # Shorten the redirect URI for a better user experience
+      shortened_uri = await _shorten_url(redirect_uri)
+      logging.info(f"Shortened URL: {shortened_uri}");
+
       # Store payment ID in state for later use when completing payment
       redirect_data = {
           "type": "redirect",
-          "redirect_uri": redirect_uri,
+          "redirect_uri": shortened_uri,
           "payment_id": truelayer_payment_id,
           "display_text": (
-              f"Please complete your payment authorization by visiting this link: {redirect_uri}"
+              f"Please complete your payment authorization by visiting this link: {shortened_uri}"
           ),
       }
       text_part = TextPart(
