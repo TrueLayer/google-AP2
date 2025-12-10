@@ -219,14 +219,26 @@ async def initiate_payment(
   logging.info("Sending initiate_payment to processor at %s", processor_url)
   task = await payment_processor_agent.send_a2a_message(message_builder.build())
 
+  # Add payment_id or mandate_id to artifacts if present
   payment_id = artifact_utils.find_key(task.artifacts, "payment_id")
-  await updater.add_artifact([
-     Part(
-        root=DataPart(
-            data={"payment_id": payment_id[0]}
-        )
-     )
-  ])
+  if payment_id:
+    await updater.add_artifact([
+       Part(
+          root=DataPart(
+              data={"payment_id": payment_id[0]}
+          )
+       )
+    ])
+
+  mandate_id = artifact_utils.find_key(task.artifacts, "mandate_id")
+  if mandate_id:
+    await updater.add_artifact([
+       Part(
+          root=DataPart(
+              data={"mandate_id": mandate_id[0]}
+          )
+       )
+    ])
 
   # Pass the payment receipt back to the shopping agent if it exists.
   payment_receipts = artifact_utils.find_canonical_objects(
