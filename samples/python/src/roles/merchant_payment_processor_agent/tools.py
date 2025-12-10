@@ -858,6 +858,64 @@ async def get_payment_status(data_parts: list[dict[str, Any]],
     await updater.complete()
     return
 
+async def get_mandate_status(
+    data_parts: list[dict[str, Any]],
+    updater: TaskUpdater,
+    current_task: Task | None,
+    debug_mode: bool = False
+) -> None:
+    """Handles polling and checking of a mandate status.
+
+    Args:
+        data_parts: DataPart contents containing mandate_id
+        updater: The task updater
+        current_task: The current task
+        debug_mode: Whether the agent is in debug mode
+    """
+    mandate_id = message_utils.find_data_part("mandate_id", data_parts)
+    if not mandate_id:
+        raise ValueError("Missing mandate_id.")
+
+    logging.info("Getting mandate status for mandate_id: %s", mandate_id)
+
+    # Get access token
+    access_token = await _get_truelayer_access_token()
+
+    # Generate TrueLayer signature for GET request
+    tl_signature = (
+        sign_with_pem(TL_SIGNING_KEY_ID, TL_SIGNING_PRIVATE_KEY)
+        .set_method(HttpMethod.GET)
+        .set_path(f"/mandates/{mandate_id}/")
+        .sign()
+    )
+
+    url = f"https://api.{TL_DOMAIN}/mandates/{mandate_id}/"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Tl-Signature": tl_signature,
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers)
+        response.raise_for_status()
+
+    mandate_response = response.json()
+    logging.info("Mandate status response: %s", mandate_response)
+
+    await updater.add_artifact([
+        Part(
+            root=DataPart(
+                data={
+                    "mandate_id": mandate_id,
+                    "mandate_status": mandate_response.get("status"),
+                    "mandate_details": mandate_response,
+                }
+            )
+        )
+    ])
+    await updater.complete()
+    return
+
 async def _request_payment_credential(
     payment_mandate: PaymentMandate,
     credentials_provider: PaymentRemoteA2aClient,
