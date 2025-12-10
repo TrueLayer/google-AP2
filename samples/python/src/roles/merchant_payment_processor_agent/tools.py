@@ -321,17 +321,8 @@ async def _initiate_mandate_creation(
     await updater.add_artifact(data_parts)
 
     if mandate_id and resource_token:
-      # Store the mandate ID in credentials provider immediately
-      await _send_vrp_mandate_id_to_credentials_provider(
-          user_email=user_email,
-          vrp_mandate_id=mandate_id,
-          credentials_provider=credentials_provider,
-          updater=updater,
-          debug_mode=debug_mode,
-      )
-
       # Build the authorization link
-      authorization_link = f"https://api.{TL_DOMAIN}/mandates#mandate_id={mandate_id}&resource_token={resource_token}&return_uri={TL_RETURN_URI}"
+      authorization_link = f"https://payment.{TL_DOMAIN}/mandates#mandate_id={mandate_id}&resource_token={resource_token}&return_uri={TL_RETURN_URI}"
 
       logging.info("TrueLayer Mandate authorization link: %s", authorization_link)
       logging.info("TrueLayer Mandate ID: %s", mandate_id)
