@@ -98,6 +98,7 @@ _account_db = {
                 "brand": "Bank of Money",
                 "account_number": "789",
                 "alias": "Main checking account",
+                "network": [{"name": "generic_bank"}],
             },
             "truelayer_vrp1": {
               "type": "TRUELAYER_VRP_MANDATE",
