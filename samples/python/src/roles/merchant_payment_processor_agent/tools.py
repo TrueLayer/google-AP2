@@ -331,6 +331,15 @@ async def _initiate_mandate_creation(
       shortened_link = await _shorten_url(authorization_link)
       logging.info(f"Shortened URL: {shortened_link}")
 
+      # Store the mandate ID in credentials provider for future use
+      await _send_vrp_mandate_id_to_credentials_provider(
+          user_email=user_email,
+          vrp_mandate_id=mandate_id,
+          credentials_provider=credentials_provider,
+          updater=updater,
+          debug_mode=debug_mode,
+      )
+
       # Store mandate ID in state for later use
       redirect_data = {
           "type": "redirect",
