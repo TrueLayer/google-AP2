@@ -100,6 +100,20 @@ _account_db = {
                 "alias": "Main checking account",
             }
         },
+        "truelayer_vrp1": {
+            "type": "TRUELAYER_VRP_MANDATE",
+            "brand": "TrueLayer",
+            "network": [{"name": "truelayer"}],
+            "account_number": "12345678",
+            "alias": "TrueLayer VRP mandate"
+        },
+        "truelayer_sip1": {
+            "type": "TRUELAYER_SIP",
+            "brand": "TrueLayer",
+            "network": [{"name": "truelayer"}],
+            "account_number": "87654321",
+            "alias": "TrueLayer Single immediate payment (SIP)",
+        }
     },
     "elmerfudd@gmail.com": {
         "payment_methods": {
