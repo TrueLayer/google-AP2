@@ -66,5 +66,6 @@ class CredentialsProviderExecutor(BaseServerExecutor):
         tools.handle_search_payment_methods,
         tools.handle_signed_payment_mandate,
         tools.handle_payment_receipt,
+        tools.handle_set_account_payment_method,
     ]
     super().__init__(supported_extensions, agent_tools, self._system_prompt)

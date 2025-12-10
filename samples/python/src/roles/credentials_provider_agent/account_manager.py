@@ -172,7 +172,6 @@ def verify_token(token: str, payment_mandate_id: str) -> dict[str, Any]:
   alias = account_lookup.get("payment_method_alias")
   return get_payment_method_by_alias(email_address, alias)
 
-
 def get_account_payment_methods(email_address: str) -> list[dict[str, Any]]:
   """Returns a list of the payment methods for the given account email address.
 
@@ -237,3 +236,39 @@ def get_payment_method_by_alias(
   if not payment_methods:
     return None
   return payment_methods[0]
+
+
+def set_account_payment_method(
+    email_address: str,
+    payment_method_id: str,
+    payment_method_type: str,
+    payment_method_data: dict[str, Any]
+) -> dict[str, Any]:
+  """Adds or updates a payment method for a given account.
+
+  Args:
+    email_address: The account's email address.
+    payment_method_id: Unique identifier for the payment method (e.g., "card3").
+    payment_method_type: The type of payment method (e.g., "CARD", "BANK_ACCOUNT",
+                         "TRUELAYER_SIP", "TRUELAYER_VRP_MANDATE").
+    payment_method_data: Dictionary containing the payment method details.
+                         Should include "alias" and other type-specific fields.
+
+  Returns:
+    The newly added/updated payment method.
+  """
+  # Ensure the account exists
+  if email_address not in _account_db:
+    _account_db[email_address] = {"payment_methods": {}}
+
+  # Ensure payment_methods dict exists
+  if "payment_methods" not in _account_db[email_address]:
+    _account_db[email_address]["payment_methods"] = {}
+
+  # Set the type in the payment method data
+  payment_method_data["type"] = payment_method_type
+
+  # Add/update the payment method
+  _account_db[email_address]["payment_methods"][payment_method_id] = payment_method_data
+
+  return payment_method_data
