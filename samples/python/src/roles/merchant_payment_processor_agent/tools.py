@@ -361,6 +361,8 @@ async def _handle_vrp_mandate_payment(
     # Extract VRP mandate ID from credentials
     vrp_mandate_id = payment_credential.get("vrp_mandate_id")
     if not vrp_mandate_id:
+      # we need to create the VRP mandate first of all
+      updater.requires_input()
       raise ValueError("VRP mandate ID not found in payment credentials")
 
     # Extract amount and currency from payment mandate
@@ -773,6 +775,34 @@ async def _send_payment_receipt_to_credentials_provider(
       .set_context_id(updater.context_id)
       .add_text("Here is the payment receipt. No action is required.")
       .add_data(PAYMENT_RECEIPT_DATA_KEY, payment_receipt.model_dump())
+      .add_data("debug_mode", debug_mode)
+  )
+  await credentials_provider.send_a2a_message(message_builder.build())
+
+
+async def _send_vrp_mandate_id_to_credentials_provider(
+    user_id: str,
+    vrp_mandate_id: str,
+    credentials_provider: PaymentRemoteA2aClient,
+    updater: TaskUpdater,
+    debug_mode: bool = False,
+) -> None:
+  """Sends the vrp mandate id to the Credentials Provider.
+
+  Args:
+    user_id: email of the user.
+    vrp_mandate_id: id of the TL mandate id.
+    credentials_provider: The credentials provider client.
+    updater: The task updater.
+    debug_mode: Whether the agent is in debug mode.
+  """
+
+  message_builder = (
+      A2aMessageBuilder()
+      .set_context_id(updater.context_id)
+      .add_text("Here is the vrp mandate id along with the user id. Store this information in the database.")
+      .add_data("vrp_mandate_id", vrp_mandate_id)
+      .add_data("user_id", user_id)
       .add_data("debug_mode", debug_mode)
   )
   await credentials_provider.send_a2a_message(message_builder.build())

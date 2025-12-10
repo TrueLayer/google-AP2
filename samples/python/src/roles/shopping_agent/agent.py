@@ -82,18 +82,31 @@ root_agent = RetryingLlmAgent(
               display the returned url link to the user.
               The url must be returned correct to the user,
               it's a critical step and only a character that differs can lead to a failure.
-          14. Call the `get_payment_status` tools and display the payment status to the user.
+          14. If the payment method is TrueLayer Single immediate payment (SIP), once the link is returned,
+              Call the `get_payment_status` tools and display the payment status to the user.
               If the payment is failed, display the failure reason.
               If the payment is settled continue to the next step.
               If the payment is still pending retry this step every minute
               for up to 5 minutes.
               After 5 minutes ask the user to confirm they want to continue waiting.
-          15. If prompted for an OTP, relay the OTP request to the user.
+          15. If the payment method is TrueLayer VRP mandate, there could be 2 options. If a VRP mandate id is already existing,
+              the payment will be processed straight away. If a VRP mandate id is not existing, you will need to create the VRP mandate first.
+              In this case, once the VRP mandate is initiated, display the returned url link to the user.
+              The url must be returned correct to the user,
+              it's a critical step and only a character that differs can lead to a failure.
+          16. If the payment method is TrueLayer VRP mandate, once the link is returned,
+              Call the `get_mandate_status` tools and display the payment status to the user.
+              If the mandate is failed, display the failure reason.
+              If the mandate is authorized continue to the next step.
+              If the mandate is still pending retry this step every minute
+              for up to 5 minutes.
+              After 5 minutes ask the user to confirm they want to continue waiting.
+          17. If prompted for an OTP, relay the OTP request to the user.
               Do not ask the user for anything other than the OTP request.
               Once you have an challenge response, display the display_text
               from it and then call the `initiate_payment_with_otp`
               tool to retry the payment. Surface the result to the user.
-          16. If the response is a success or confirmation, create a block of
+          18. If the response is a success or confirmation, create a block of
               text titled 'Payment Receipt'. Use the payment_receipt object
               from state. Display the following:
               - Payment ID: CRITICAL - You MUST use the field payment_receipt.payment_id.
