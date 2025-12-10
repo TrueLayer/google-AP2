@@ -99,11 +99,13 @@ root_agent = RetryingLlmAgent(
           16. If the payment method is TrueLayer VRP mandate and a mandate creation link was returned in step 15b:
               a. Call the `get_mandate_status` tool and display the mandate status to the user.
                  If the mandate is failed, display the failure reason and stop.
-                 If the mandate is authorized, continue to step 16b.
                  If the mandate is still pending, retry this step every minute
                  for up to 5 minutes.
                  After 5 minutes ask the user to confirm they want to continue waiting.
-              b. Once the mandate is authorized, the VRP mandate is now ready.
+                 CRITICAL: Only continue to step 16b if the mandate_status is "authorized".
+                 Do not proceed with payment if the mandate status is anything other than "authorized".
+              b. Once the mandate_status is confirmed to be "authorized", the VRP mandate is now ready.
+                 CRITICAL: Verify the mandate_status is "authorized" before proceeding.
                  Call the `initiate_payment` tool again to initiate a VRP payment
                  using the newly authorized mandate. This payment will be processed
                  automatically without requiring user authentication (like step 15a).
