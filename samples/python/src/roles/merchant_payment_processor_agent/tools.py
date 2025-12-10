@@ -266,6 +266,106 @@ async def _initiate_sip_payment(
     await updater.failed(message=updater.new_agent_message(parts=error_message))
 
 
+async def _initiate_mandate_creation(
+    payment_mandate: PaymentMandate,
+    updater: TaskUpdater,
+    debug_mode: bool = False,
+) -> None:
+  """Initiates a TrueLayer VRP mandate creation and returns the authorization link.
+
+  Args:
+    payment_mandate: The payment mandate.
+    updater: The task updater.
+    debug_mode: Whether the agent is in debug mode.
+  """
+  logging.info("Initiating mandate creation for mandate id %s...",
+               payment_mandate.payment_mandate_contents.payment_mandate_id)
+
+  payment_mandate_id = (
+      payment_mandate.payment_mandate_contents.payment_mandate_id
+  )
+  credentials_provider = _get_credentials_provider_client(payment_mandate)
+
+  # Extract user info from payment mandate
+  payment_response = payment_mandate.payment_mandate_contents.payment_response
+  shipping_address = payment_response.shipping_address
+
+  # Generate user ID
+  user_id = str(uuid.uuid4())
+  user_name = shipping_address.recipient if shipping_address else "Unknown"
+  user_email = payment_response.payer_email or "unknown@example.com"
+
+  logging.info(
+      "Calling TrueLayer Mandates API for mandate creation...",
+  )
+
+  try:
+    # Call TrueLayer Mandates API
+    truelayer_response = await _call_truelayer_mandates_api(
+        user_id=user_id,
+        user_name=user_name,
+        user_email=user_email,
+    )
+    logging.info("TrueLayer Mandate creation response: %s", truelayer_response)
+
+    # Extract mandate ID and resource token from response
+    mandate_id = truelayer_response.get("id")
+    resource_token = truelayer_response.get("resource_token")
+
+    # Create a new message with mandate_id info
+    data_parts = [
+        Part(
+            root=DataPart(data={"mandate_id": mandate_id})
+        )
+    ]
+    await updater.add_artifact(data_parts)
+
+    if mandate_id and resource_token:
+      # Store the mandate ID in credentials provider immediately
+      await _send_vrp_mandate_id_to_credentials_provider(
+          user_email=user_email,
+          vrp_mandate_id=mandate_id,
+          credentials_provider=credentials_provider,
+          updater=updater,
+          debug_mode=debug_mode,
+      )
+
+      # Build the authorization link
+      authorization_link = f"https://api.{TL_DOMAIN}/mandates#mandate_id={mandate_id}&resource_token={resource_token}&return_uri={TL_RETURN_URI}"
+
+      logging.info("TrueLayer Mandate authorization link: %s", authorization_link)
+      logging.info("TrueLayer Mandate ID: %s", mandate_id)
+
+      # Shorten the authorization link for a better user experience
+      shortened_link = await _shorten_url(authorization_link)
+      logging.info(f"Shortened URL: {shortened_link}")
+
+      # Store mandate ID in state for later use
+      redirect_data = {
+          "type": "redirect",
+          "redirect_uri": shortened_link,
+          "mandate_id": mandate_id,
+          "display_text": (
+              f"Please authorize your VRP mandate by visiting this link: {shortened_link}"
+          ),
+      }
+      text_part = TextPart(
+          text="Please authorize the VRP mandate to enable future payments."
+      )
+      data_part = DataPart(data={"mandate_redirect": redirect_data})
+      message = updater.new_agent_message(
+          parts=[Part(root=text_part), Part(root=data_part)]
+      )
+      await updater.requires_input(message=message)
+    else:
+      raise ValueError("No mandate ID or resource token found in mandate creation response")
+
+  except Exception as e:
+    logging.error("TrueLayer Mandate API call failed: %s", e)
+    error_message = _create_text_parts(f"Mandate creation failed: {e}")
+    await updater.failed(message=updater.new_agent_message(parts=error_message))
+
+
 async def _raise_challenge(
     updater: TaskUpdater,
 ) -> None:
@@ -361,11 +461,9 @@ async def _handle_vrp_mandate_payment(
     # Extract VRP mandate ID from credentials
     vrp_mandate_id = payment_credential.get("vrp_mandate_id")
     if not vrp_mandate_id:
-      # we need to create the VRP mandate first of all
-      # todo: call TL API to create a mandate
-      # todo: once the mandate is created, store the vrp_mandate_id in the payment credentials for future use, using the set_account_payment_method tool
-      # todo: return the mandate authorization link to the shopping agent
-      raise ValueError("VRP mandate ID not found in payment credentials")
+      # Create the VRP mandate and return authorization link
+      await _initiate_mandate_creation(payment_mandate, updater, debug_mode)
+      return
 
     # Extract amount and currency from payment mandate
     payment_total = payment_mandate.payment_mandate_contents.payment_details_total
@@ -615,6 +713,106 @@ async def _call_truelayer_payments_api_sip(
 
   # Prepare request headers
   url = f"https://api.{TL_DOMAIN}/payments"
+  headers = {
+      "Authorization": f"Bearer {access_token}",
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotency_key,
+      "Tl-Signature": tl_signature,
+  }
+
+  async with httpx.AsyncClient() as client:
+    response = await client.post(url, headers=headers, data=body)
+    response.raise_for_status()
+    return response.json()
+
+
+async def _call_truelayer_mandates_api(
+    user_id: str,
+    user_name: str,
+    user_email: str,
+) -> dict:
+  """Calls TrueLayer Mandates API to create a sweeping mandate.
+
+  Args:
+    user_id: User identifier
+    user_name: User's full name
+    user_email: User's email address
+
+  Returns:
+    API response as dictionary containing mandate details and authorization URI
+  """
+
+  # Dynamically obtain access token
+  access_token = await _get_truelayer_access_token()
+
+  # Generate idempotency key
+  idempotency_key = str(uuid.uuid4())
+
+  # Get current time and set validity period
+  valid_from = datetime.now(timezone.utc).isoformat()
+  # Set valid_to to 1 year from now
+  from datetime import timedelta
+  valid_to = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+
+  # Prepare payload for mandate creation
+  # Note: Hardcoding constraints and beneficiary details for demo purposes
+  payload = {
+      "mandate": {
+          "type": "sweeping",
+          "provider_filter": {
+              "countries": ["GB"],
+              "release_channel": "private_beta",
+          },
+          "provider_selection": {
+              "type": "user_selected"
+          },
+          "beneficiary": {
+              "type": "external_account",
+              "account_holder_name": "Beneficiary Name",
+              "account_identifier": {
+                  "type": "sort_code_account_number",
+                  "sort_code": "100000",
+                  "account_number": "31510604",
+              }
+          }
+      },
+      "currency": "GBP",
+      "user": {
+          "id": user_id,
+          "name": user_name,
+          "email": user_email,
+          "phone": "",
+      },
+      "constraints": {
+          "valid_from": valid_from,
+          "valid_to": valid_to,
+          "maximum_individual_amount": 50,
+          "periodic_limits": {
+              "day": {
+                  "maximum_amount": 100,
+                  "period_alignment": "calendar"
+              },
+              "month": {
+                  "maximum_amount": 1000,
+                  "period_alignment": "calendar"
+              }
+          }
+      }
+  }
+  body = json.dumps(payload, separators=(",", ":"))
+
+  # Generate TrueLayer signature
+  tl_signature = (
+      sign_with_pem(TL_SIGNING_KEY_ID, TL_SIGNING_PRIVATE_KEY)
+      .set_method(HttpMethod.POST)
+      .set_path("/mandates")
+      .add_header("Idempotency-Key", idempotency_key)
+      .set_body(body)
+      .sign()
+  )
+
+  # Prepare request headers
+  url = f"https://api.{TL_DOMAIN}/mandates"
   headers = {
       "Authorization": f"Bearer {access_token}",
       "Content-Type": "application/json",
