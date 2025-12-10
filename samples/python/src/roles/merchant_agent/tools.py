@@ -219,6 +219,15 @@ async def initiate_payment(
   logging.info("Sending initiate_payment to processor at %s", processor_url)
   task = await payment_processor_agent.send_a2a_message(message_builder.build())
 
+  payment_id = artifact_utils.find_key(task.artifacts, "payment_id")
+  await updater.add_artifact([
+     Part(
+        root=DataPart(
+            data={"payment_id": payment_id[0]}
+        )
+     )
+  ])
+
   # Pass the payment receipt back to the shopping agent if it exists.
   payment_receipts = artifact_utils.find_canonical_objects(
       task.artifacts, PAYMENT_RECEIPT_DATA_KEY, PaymentReceipt
@@ -291,6 +300,7 @@ async def get_payment_status(
     data_parts: list[dict[str, Any]],
     updater: TaskUpdater,
     current_task: Task | None,
+    debug_mode: bool = False,
 ) -> None:
   """Retrieves the payment status for a given payment ID.
 
@@ -301,6 +311,7 @@ async def get_payment_status(
     data_parts: A list of data part contents from the request.
     updater: The TaskUpdater instance to add artifacts and complete the task.
     current_task: The current task, not used in this function.
+    debug_mode: Whether the agent is in debug mode.
   """
   payment_id = message_utils.find_data_part("payment_id", data_parts)
   if not payment_id:
@@ -308,24 +319,52 @@ async def get_payment_status(
     return
 
   # Retrieve payment status from storage
-  status_data = {
-      "payment_status": "SUCCESS",
-      "payment_id": payment_id,
-  }
+  payment_method_type = "TRUELAYER_SIP"
+  processor_url = _PAYMENT_PROCESSORS_BY_PAYMENT_METHOD_TYPE.get(
+      payment_method_type
+  )
 
-  if status_data:
-    artifact = Part(root=DataPart(data=status_data))
-    await updater.add_artifact([artifact])
-    await updater.complete()
-  else:
-    # Payment not yet completed
-    await updater.add_artifact([
-        Part(root=DataPart(data={
-            "payment_status": "PENDING",
-            "payment_id": payment_id,
-        }))
-    ])
-    await updater.complete()
+  if not processor_url:
+      await _fail_task(
+          updater, f"No payment processor found for method: {payment_method_type}"
+      )
+      return
+
+  payment_processor_agent = PaymentRemoteA2aClient(
+      name="payment_processor_agent",
+      base_url=processor_url,
+      required_extensions={
+          EXTENSION_URI,
+      },
+  )
+
+  message_builder = (
+      A2aMessageBuilder()
+      .set_context_id(updater.context_id)
+      .add_text("get payment status")
+      .add_data("payment_id", payment_id)
+      .add_data("debug_mode", debug_mode)
+  )
+
+  payment_processor_task_id = _get_payment_processor_task_id(current_task)
+  if payment_processor_task_id:
+    message_builder.set_task_id(payment_processor_task_id)
+
+  task = await payment_processor_agent.send_a2a_message(message_builder.build())
+
+  payment_id = artifact_utils.find_key(task.artifacts, "payment_id")
+  payment_status = artifact_utils.find_key(task.artifacts, "payment_status")
+  await updater.add_artifact([
+      Part(
+          root=DataPart(
+              data={
+                  "payment_id": payment_id[0],
+                  "payment_status": payment_status[0],
+              }
+          )
+      )
+  ])
+  await updater.complete()
 
 def _get_payment_processor_task_id(task: Task | None) -> str | None:
   """Returns the task ID of the payment processor task, if it exists.

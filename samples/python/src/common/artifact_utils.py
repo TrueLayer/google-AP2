@@ -46,6 +46,27 @@ def find_canonical_objects(
         canonical_objects.append(model.model_validate(part.root.data[data_key]))
   return canonical_objects
 
+def find_key(
+        artifacts: list[Artifact], data_key: str
+):
+  """Finds all data parts with the given key in the artifacts.
+
+  Args:
+    artifacts: a list of the artifacts to be searched.
+    data_key: The key of the DataPart to search for.
+
+  Returns:
+    A list of data parts with the given key in the artifacts.
+  """
+  if artifacts is None:
+    return []
+
+  found_data_parts = []
+  for artifact in artifacts:
+    for part in artifact.parts:
+      if hasattr(part.root, "data") and data_key in part.root.data:
+        found_data_parts.append(part.root.data[data_key])
+  return found_data_parts
 
 def get_first_data_part(artifacts: list[Artifact]) -> dict[str, Any]:
   """Returns the first DataPart encountered in all the given artifacts.

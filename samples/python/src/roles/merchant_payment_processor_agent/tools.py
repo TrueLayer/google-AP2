@@ -188,12 +188,21 @@ async def _initiate_sip_payment(
         user_name=user_name,
         user_email=user_email,
         user_phone=user_phone,
+        updater=updater
     )
     logging.info("TrueLayer SIP payment response: %s", truelayer_response)
 
     # Extract redirect URI from hosted_page
     redirect_uri = truelayer_response.get("hosted_page", {}).get("uri")
     truelayer_payment_id = truelayer_response.get("id")
+
+    # Create a new message with payment_id info
+    data_parts = [
+        Part(
+            root=DataPart(data={"payment_id": truelayer_payment_id})
+        )
+    ]
+    await updater.add_artifact(data_parts)
 
     if redirect_uri:
       logging.info("TrueLayer SIP redirect URI: %s", redirect_uri)
@@ -502,6 +511,7 @@ async def _call_truelayer_payments_api_sip(
     user_name: str,
     user_email: str,
     user_phone: str,
+    updater: TaskUpdater
 ) -> dict:
   """Calls TrueLayer Payments API to create a Single Immediate Payment (SIP).
 
@@ -581,6 +591,45 @@ async def _call_truelayer_payments_api_sip(
     response.raise_for_status()
     return response.json()
 
+async def get_payment_status(data_parts: list[dict[str, Any]],
+    updater: TaskUpdater,
+    current_task: Task | None,
+    debug_mode: bool = False) -> None:
+    """Handles polling and checking of a payment status."""
+
+    payment_id = (
+        message_utils.find_data_part("payment_id", data_parts)
+    )
+    if not payment_id:
+        raise ValueError("Missing payment_id.")
+
+    # Get access token
+    access_token = await _get_truelayer_access_token()
+    idempotency_key = str(uuid.uuid4())
+
+    url = f"https://api.{TL_DOMAIN}/payments/{payment_id}"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotency_key,
+    }
+
+    async with httpx.AsyncClient() as client:
+       response = await client.get(url, headers=headers)
+       response.raise_for_status()
+
+    await updater.add_artifact([
+        Part(
+            root=DataPart(
+                data={
+                    "payment_id": payment_id,
+                    "payment_status": response.json().get("status"),
+                }
+            )
+        )
+    ])
+    await updater.complete()
+    return
 
 async def _request_payment_credential(
     payment_mandate: PaymentMandate,

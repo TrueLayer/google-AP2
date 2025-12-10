@@ -335,7 +335,7 @@ async def get_payment_status(
 ) -> dict:
   """Query the merchant agent for payment status.
 
-  This tool polls the merchant agent to check if a payment has been completed.
+  This tool asks the merchant agent to check if a payment has been completed.
   It should be called repeatedly after payment initiation until the payment
   is completed.
 
@@ -362,7 +362,6 @@ async def get_payment_status(
   # Extract payment status from artifacts
   payment_status = None
   transaction_id = None
-
   if task.artifacts:
     for i, artifact in enumerate(task.artifacts):
       if hasattr(artifact, 'parts') and artifact.parts:
@@ -373,7 +372,7 @@ async def get_payment_status(
               data = root.data
               payment_status = data.get("payment_status")
               transaction_id = data.get("transaction_id")
-              
+
   result = {
       "payment_status": payment_status or "UNKNOWN",
       "transaction_id": transaction_id,
