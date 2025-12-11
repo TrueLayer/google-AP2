@@ -22,7 +22,7 @@ In the single immediate payment scenario, the shopping agent yields a link to ou
 
 In VRP cases, if the user is a returning one (`bugsbunny@gmail.com` in our example) they are simply requested to confirm the payment, without any further authentication step on the bank.
 
-If the user is a new user (`duffyduck@gmail.com` in our sample), the user is requested to authorise the VRP mandate on the bank first, and only once the authorisation completes, the shopping agent proceeds creating a payment using the mandate just created.
+If the user is a new user (`daffyduck@gmail.com` in our sample), the user is requested to authorise the VRP mandate on the bank first, and only once the authorisation completes, the shopping agent proceeds creating a payment using the mandate just created.
 
 In both cases, similarly to what happens in the single payment scenario, the user is shown a payment receipt confirming the transaction
 
