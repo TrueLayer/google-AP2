@@ -96,6 +96,7 @@ root_agent = RetryingLlmAgent(
                  In this case, once the VRP mandate is initiated, display the returned url link to the user.
                  The url must be returned correct to the user,
                  it's a critical step and only a character that differs can lead to a failure.
+               In both cases, before proceeding with the mandate, print the mandate status explicitely to the user.
           16. If the payment method is TrueLayer VRP mandate and a mandate creation link was returned in step 15b:
               a. Call the `get_mandate_status` tool and display the mandate status to the user.
                  If the mandate is failed, display the failure reason and stop.
