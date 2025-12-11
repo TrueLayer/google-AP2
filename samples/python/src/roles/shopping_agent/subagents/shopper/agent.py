@@ -49,8 +49,6 @@ shopper = RetryingLlmAgent(
       to make reasonable assumptions about the IntentMandate criteria initially.
       For example, inquire about:
         - A detailed description of the item.
-        - Any preferred merchants or specific SKUs.
-        - Whether the item needs to be refundable.
     3. After you have gathered what you believe is sufficient information,
       use the 'create_intent_mandate' tool with the collected information
       (user's description, and any other details they provided). Do not include
