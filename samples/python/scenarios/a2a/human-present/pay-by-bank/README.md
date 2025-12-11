@@ -60,6 +60,54 @@ At the minute, for the purpose of the demo, only VRP-related directives have bee
 
 Here is where we have integrated our payments and mandates APIs.
 
+## The workflow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant SA as Shopping<br/>Agent
+    participant CPA as Credential Provider<br/>Agent
+    participant MA as Merchant<br/>Agent
+    participant MPP as Merchant<br/>Payment Processor<br/>Agent
+    participant TL as TrueLayer
+    U->>SA: "I would like to buy a pizza"
+    Note over SA: Intent Mandate<br/>( contains user search details<br/>e.g: price cap, merchant, ... )
+    SA->>U: Show Intent Mandate
+    U->>SA: Approve
+    SA->>MA: Search for products
+    Note over MA: Cart Mandate<br/>( proposed products )
+    MA->>SA: Return candidate products
+    SA->>U: Show Cart Mandate
+    U->>SA: Select product/s
+    SA->>MA: Send Cart Mandate
+    MA->>MA: Sign Cart Mandate
+    MA->>SA: Return signed Cart Mandate
+    SA->>CPA: Request shipping options
+    CPA->>SA: Provide shipping options
+    SA->>U: Provide shipping options
+    U->>SA: Select shipping address
+    SA->>CPA: Request payment options
+    CPA->>SA: Provide payment options
+    SA->>U: Provide payment options
+    U->>SA: Select pament method
+    Note over SA: Payment Mandate<br/>( selected product/s<br/>+ shipping address<br/>+ payment method )
+    SA->>U: Show Payment Mandate
+    U->>U: Sign Payment Mandate
+    U->>SA: Approve
+    SA->>MA: Initiate payment
+    MA->>MPP: Initiate payment
+    MPP->>CPA: Request payment credentials
+    CPA->>MPP: Provide payment credentials
+    MPP->>TL: Initiate payment
+    TL-->>U: Strong customer authentication
+    U-->>TL: Confirm
+    TL->>MPP: Complete transaction
+    MPP->>MA: Payment Receipt
+    MA->>SA: Payment Receipt
+    SA->>U: Payment Receipt
+    MPP->>CPA: Store Payment Receipt
+```
+
 ## Executing the Example
 
 ### Setup
