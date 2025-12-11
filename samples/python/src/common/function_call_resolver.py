@@ -81,12 +81,12 @@ class FunctionCallResolver:
     """
 
     response = self._client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-pro",
         contents=prompt,
         config=self._config,
     )
 
-    logging.debug("\nDetermine Tool Response: %s\n", response)
+    logging.info("\nDetermine Tool Response: %s\n", response)
 
     if (
         response.candidates
