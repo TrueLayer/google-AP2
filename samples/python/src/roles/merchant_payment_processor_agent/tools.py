@@ -459,11 +459,16 @@ async def _handle_vrp_mandate_payment(
 
   if payment_method_type == "TRUELAYER_VRP_MANDATE":
     # Extract VRP mandate ID from credentials
+    logging.info("Payment credential for VRP mandate: %s", payment_credential)
     vrp_mandate_id = payment_credential.get("vrp_mandate_id")
+
     if not vrp_mandate_id:
+      logging.info("VRP mandate ID not found in credentials, initiating mandate creation...")
       # Create the VRP mandate and return authorization link
       await _initiate_mandate_creation(payment_mandate, updater, debug_mode)
       return
+
+    logging.info("Using VRP mandate ID: %s", vrp_mandate_id)
 
     # Extract amount and currency from payment mandate
     payment_total = payment_mandate.payment_mandate_contents.payment_details_total
@@ -1061,7 +1066,7 @@ async def _send_vrp_mandate_id_to_credentials_provider(
 
   # Prepare payment method data matching the credentials provider's expected format
   payment_method_data = {
-      "alias": f"TrueLayer VRP mandate {vrp_mandate_id[:8]}...",
+      "alias": f"TrueLayer VRP mandate",
       "brand": "TrueLayer",
       "network": [{"name": "truelayer"}],
       "account_number": vrp_mandate_id[:8],

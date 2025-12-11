@@ -18,6 +18,7 @@ Each 'account' contains a user's payment methods and shipping address.
 For demonstration purposes, several accounts are pre-populated with sample data.
 """
 
+import logging
 import os
 from typing import Any
 
@@ -286,5 +287,7 @@ def set_account_payment_method(
 
   # Add/update the payment method
   _account_db[email_address]["payment_methods"][payment_method_id] = payment_method_data
+
+  logging.info("Account db updated, current state: %s", _account_db)
 
   return payment_method_data
