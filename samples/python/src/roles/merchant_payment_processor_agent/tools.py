@@ -1065,7 +1065,7 @@ async def _send_vrp_mandate_id_to_credentials_provider(
   message_builder = (
       A2aMessageBuilder()
       .set_context_id(updater.context_id)
-      .add_text("Store this VRP mandate as a payment method for the user.")
+      .add_text("Set this VRP mandate as account payment method for the user.")
       .add_data("email_address", user_email)
       .add_data("payment_method_id", payment_method_id)
       .add_data("payment_method_type", "TRUELAYER_VRP_MANDATE")
