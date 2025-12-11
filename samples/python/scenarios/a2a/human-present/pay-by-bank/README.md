@@ -6,11 +6,11 @@ using TrueLayer's *Pay By Bank* as the payment method.
 ## Supported scenarios
 
 Currently, we support 3 different scenarios:
-1. VRP commercial mandate for a new user
-2. VRP commercial mandate for a returning user
+1. VRP mandate for a new user
+2. VRP mandate for a returning user
 3. Single immediate payments
 
-### VRP commercial payments
+### VRP mandate payments
 
 In VRP cases, if the user is a returning one (`bugsbunny@gmail.com` in our example) they are simply requested to confirm the payment, without any further authentication step on the bank.
 
