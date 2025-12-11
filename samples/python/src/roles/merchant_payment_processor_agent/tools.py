@@ -1066,7 +1066,7 @@ async def _send_vrp_mandate_id_to_credentials_provider(
 
   # Prepare payment method data matching the credentials provider's expected format
   payment_method_data = {
-      "alias": f"TrueLayer VRP mandate",
+      "alias": "TrueLayer VRP mandate",
       "brand": "TrueLayer",
       "network": [{"name": "truelayer"}],
       "account_number": vrp_mandate_id[:8],
