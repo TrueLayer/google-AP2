@@ -1,11 +1,7 @@
-# Agent Payments Protocol Sample: Human Present Purchases with Pay by Bank
+# Agent Payments Protocol Sample: Pay by Bank
 
 This sample demonstrates the A2A ap2-extension for a human present transaction
 using TrueLayer's *Pay By Bank* as the payment method.
-
-## Intro
-
-To integrate TrueLayer‑style Pay‑by‑Bank into AP2, the key step would be to define a new AP2 payment method extension representing an open banking payment initiation, in analogy with the Cards sample used in the demo.
 
 ## Supported scenarios
 
