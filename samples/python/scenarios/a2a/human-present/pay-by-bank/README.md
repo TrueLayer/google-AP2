@@ -17,6 +17,8 @@ Human-Not-Present flows.
 All Human-Present purchases will have a user-signed PaymentMandate authorizing
 the purchase.
 
+<video src="samples/python/scenarios/a2a/human-present/pay-by-bank/VRP_mandate_setup.mp4" width="320" height="240" controls></video>
+
 ## Key Actors
 
 This sample consists of:
