@@ -30,7 +30,7 @@ from common.system_utils import DEBUG_MODE_INSTRUCTIONS
 
 
 shopper = RetryingLlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-2.5-pro",
     name="shopper",
     max_retries=5,
     instruction="""

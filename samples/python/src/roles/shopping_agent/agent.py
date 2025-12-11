@@ -32,7 +32,7 @@ from common.system_utils import DEBUG_MODE_INSTRUCTIONS
 
 root_agent = RetryingLlmAgent(
     max_retries=5,
-    model="gemini-2.5-flash",
+    model="gemini-2.5-pro",
     name="root_agent",
     instruction="""
           You are a shopping agent responsible for helping users find and
