@@ -22,11 +22,14 @@ If the user is a new user (`daffyduck@gmail.com` in our sample), the user is req
 
 In both cases, similarly to what happens in the single payment scenario, the user is shown a payment receipt confirming the transaction
 
-<video src="samples/python/scenarios/a2a/human-present/pay-by-bank/VRP_mandate_setup.mp4" width="320" height="240" controls></video>
+
+https://github.com/user-attachments/assets/bd86408a-f19b-4727-9977-cd12c485a6ba
+
 
 ## Key Actors
 
 This sample consists of:
+
 
 *  **Shopping Agent:** The main orchestrator that handles user's requests to
     shop and delegates tasks to specialized agents.
