@@ -75,7 +75,7 @@ _account_db = {
                 "account_identifier": "foo@bar.com",
                 "alias": "Bugs's PayPal account",
             },
-            "truelayer_vrp1": {
+            "truelayer_vrp": {
                 "type": "TRUELAYER_VRP_MANDATE",
                 "brand": "TrueLayer",
                 "network": [{"name": "truelayer"}],
