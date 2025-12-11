@@ -70,6 +70,8 @@ sequenceDiagram
     participant MA as Merchant<br/>Agent
     participant MPP as Merchant<br/>Payment Processor<br/>Agent
     participant TL as TrueLayer
+    participant B as Bank
+
     U->>SA: "I would like to buy a pizza"
     Note over SA: Intent Mandate<br/>( contains user search details<br/>e.g: price cap, merchant, ... )
     SA->>U: Show Intent Mandate
@@ -99,8 +101,10 @@ sequenceDiagram
     MPP->>CPA: Request payment credentials
     CPA->>MPP: Provide payment credentials
     MPP->>TL: Initiate payment
-    TL-->>U: Strong customer authentication
-    U-->>TL: Confirm
+    TL->>B: Initiate payment
+    B-->>U: Strong customer authentication
+    U-->>B: Confirm
+    B-->>TL: Confirm
     TL->>MPP: Complete transaction
     MPP->>MA: Payment Receipt
     MA->>SA: Payment Receipt
