@@ -26,7 +26,7 @@ In both cases, similarly to what happens in the single payment scenario, the use
 
 This sample consists of:
 
-*   **Shopping Agent:** The main orchestrator that handles user's requests to
+*  **Shopping Agent:** The main orchestrator that handles user's requests to
     shop and delegates tasks to specialized agents.
 *   **Merchant Agent:** An agent that handles product queries from the shopping
     agent.
@@ -45,10 +45,10 @@ We had to amend the shopping agent prompt so that we could handle resuming a pay
 ### Credentials providers use
 
 The credentials provider is used as vault for payment methods issued by TrueLayer. Rather than storing card details, we imagine the credentials provider agent as vault for payments consents, both for one-off payments and pre-authorized Variable Recurring Payment (VRP) mandates. The credentials provider exposes tools to:
-•	List eligible bank accounts associated with the user’s TrueLayer consents
-•	Retrieve stored VRP mandate identifiers and their active status
-•	Issue short-lived payment initiation tokens for new payments
-•	Attach payment method details (consent ID or mandate ID) into the PaymentMandate
+- List eligible bank accounts associated with the user’s TrueLayer consents
+- Retrieve stored VRP mandate identifiers and their active status
+- Issue short-lived payment initiation tokens for new payments
+- Attach payment method details (consent ID or mandate ID) into the PaymentMandate
 
 At the minute, for the purpose of the demo, only VRP-related directives have been implemented.
 
@@ -56,7 +56,7 @@ At the minute, for the purpose of the demo, only VRP-related directives have bee
 
 Here is where we have integrated our payments and mandates APIs.
 
-## The workflow
+## Sequence diagram
 
 ```mermaid
 sequenceDiagram
@@ -150,63 +150,4 @@ bash samples/python/scenarios/a2a/human-present/pay-by-bank/run.sh
 Then, open a browser and navigate to the shopping agent UI at http://0.0.0.0:8000. You
 may now begin interacting with the Shopping Agent.
 
-## Advanced Engagements with the samples
-
-### Enabling Verbose Engagement with the Shopping Agent
-
-If you want to understand what the agents are doing internally or inspect the
-mandate objects they create and share, you can ask the Shopping Agent to run in
-**verbose mode**.
-
-Enabling verbose mode will instruct the Shopping Agent, and any agents it
-delegates to, to provide detailed explanations of their process, including:
-
-*   A description of their current and next steps.
-*   The JSON representation of all data payloads (such as `IntentMandates`,
-    `CartMandates`, or `PaymentMandates`) being created, sent, or received.
-
-#### How to Activate Verbose Mode
-
-To activate this mode, simply include the keyword verbose in your initial prompt
-to the Shopping Agent. Example prompt:
-
-*"I'm looking to buy a new pair of shoes. Could you be verbose as we do this,
-explaining what you're doing, and display all data payloads?"*
-
-> **💡 TIP: Give elaborate instructions**
->
-> While the word **verbose** is usually sufficient, providing more elaborate
-> instruction in your prompt tends to result in more detailed and helpful
-> explanations from the agent.
-
-> **💡 TIP: If the JSON is missing...**
->
-> If the agent is in verbose mode but fails to display the JSON mandate, a quick
-> follow-up prompt is often needed. Just say: **"Remember we're in verbose mode,
-> please display the JSON."** After this reminder, the agent usually becomes
-> more reliable at displaying all data payloads.
-
-### Viewing Agent Communication
-
-To help engineers visualize the exact communication occurring between the agent
-servers, a detailed log file is created automatically when the servers start up.
-
-By default, this log file is named `watch.log` and is located in the `.logs`
-directory.
-
-#### Log Contents
-
-The watch log is a comprehensive trace that includes three main categories of
-data:
-
-| Category              | Details Included                                     |
-| :-------------------- | :--------------------------------------------------- |
-| **Raw HTTP Data**     | The **HTTP method** (e.g., `POST`) and **URL** for   |
-:                       : each request, the **JSON request body**, and the :
-:                       : **JSON response body**.                              :
-| **A2A Message Data**  | Any **request instructions** extracted from the      |
-:                       : Agent-to-Agent (A2A) Message's `TextPart`, and any   :
-:                       : data found within the Message's `DataParts`.         :
-| **AP2 Protocol Data** | Any **Mandate objects** (`IntentMandate`,            |
-:                       : `CartMandate`, `PaymentMandate`) that are identified :
-:                       : within a Message's `DataParts`.                      :
+Refer to the [cards sample](../cards/README.md) for more details on how to troubleshoot the execution of the agent.
