@@ -665,6 +665,7 @@ async def _call_truelayer_payments_api_sip(
 
   # Prepare payload for SIP
   # Note: Hardcoding GBP for TrueLayer API regardless of the payment mandate currency.
+  # TODO: get beneficiary details dynamically from credentials provider
   payload = {
       "amount_in_minor": amount_in_minor,
       "currency": "GBP",
