@@ -93,6 +93,16 @@ _account_db = {
         },
     },
     "daffyduck@gmail.com": {
+        "shipping_address": {
+            "recipient": "Daffy Duck",
+            "organization": "Sample Organization",
+            "address_line": ["40 Finsbury Square"],
+            "city": "London",
+            "region": "ST",
+            "postal_code": "00000",
+            "country": "US",
+            "phone_number": "+1-111-111-1111",
+        },
         "payment_methods": {
             "bank_account1": {
                 "type": "BANK_ACCOUNT",
