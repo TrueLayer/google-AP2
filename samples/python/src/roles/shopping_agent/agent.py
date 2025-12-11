@@ -80,20 +80,42 @@ root_agent = RetryingLlmAgent(
           12. Initiate the payment by calling the `initiate_payment` tool.
           13. If the payment method is TrueLayer Single immediate payment (SIP)
               display the returned url link to the user.
-              CRITICAL: The url must be returned to the user exactly as is.
-               Do NOT shorten the url or change it in any way.
-          14. Call the `get_payment_status` tools and display the payment status to the user.
+              The url must be returned correct to the user,
+              it's a critical step and only a character that differs can lead to a failure.
+          14. If the payment method is TrueLayer Single immediate payment (SIP), once the link is returned,
+              Call the `get_payment_status` tools and display the payment status to the user.
               If the payment is failed, display the failure reason.
               If the payment is settled continue to the next step.
               If the payment is still pending retry this step every minute
               for up to 5 minutes.
               After 5 minutes ask the user to confirm they want to continue waiting.
-          15. If prompted for an OTP, relay the OTP request to the user.
+          15. If the payment method is TrueLayer VRP mandate, there could be 2 options:
+              a. If a VRP mandate id is already existing, the payment will be processed straight away.
+                 The payment will complete without requiring user authentication. Proceed to step 17.
+              b. If a VRP mandate id is not existing, you will need to create the VRP mandate first.
+                 In this case, once the VRP mandate is initiated, display the returned url link to the user.
+                 The url must be returned correct to the user,
+                 it's a critical step and only a character that differs can lead to a failure.
+          16. If the payment method is TrueLayer VRP mandate and a mandate creation link was returned in step 15b:
+              a. Call the `get_mandate_status` tool and display the mandate status to the user.
+                 If the mandate is failed, display the failure reason and stop.
+                 If the mandate is still pending, retry this step every minute
+                 for up to 5 minutes.
+                 After 5 minutes ask the user to confirm they want to continue waiting.
+                 CRITICAL: Only continue to step 16b if the mandate_status is "authorized".
+                 Do not proceed with payment if the mandate status is anything other than "authorized".
+              b. Once the mandate_status is confirmed to be "authorized", the VRP mandate is now ready.
+                 CRITICAL: Verify the mandate_status is "authorized" before proceeding.
+                 Call the `initiate_payment` tool again to initiate a VRP payment
+                 using the newly authorized mandate. This payment will be processed
+                 automatically without requiring user authentication (like step 15a).
+                 Proceed to step 17.
+          17. If prompted for an OTP, relay the OTP request to the user.
               Do not ask the user for anything other than the OTP request.
               Once you have an challenge response, display the display_text
               from it and then call the `initiate_payment_with_otp`
               tool to retry the payment. Surface the result to the user.
-          16. If the response is a success or confirmation, create a block of
+          18. If the response is a success or confirmation, create a block of
               text titled 'Payment Receipt'. Use the payment_receipt object
               from state. Display the following:
               - Payment ID: CRITICAL - You MUST use the field payment_receipt.payment_id.
@@ -131,6 +153,7 @@ root_agent = RetryingLlmAgent(
         tools.sign_mandates_on_user_device,
         tools.update_cart,
         tools.get_payment_status,
+        tools.get_mandate_status,
     ],
     sub_agents=[
         shopper,

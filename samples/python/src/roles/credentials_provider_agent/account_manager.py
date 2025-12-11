@@ -18,6 +18,7 @@ Each 'account' contains a user's payment methods and shipping address.
 For demonstration purposes, several accounts are pre-populated with sample data.
 """
 
+import logging
 import os
 from typing import Any
 
@@ -74,7 +75,7 @@ _account_db = {
                 "account_identifier": "foo@bar.com",
                 "alias": "Bugs's PayPal account",
             },
-            "pay_by_bank1": {
+            "truelayer_vrp1": {
                 "type": "TRUELAYER_VRP_MANDATE",
                 "brand": "TrueLayer",
                 "network": [{"name": "truelayer"}],
@@ -98,8 +99,24 @@ _account_db = {
                 "brand": "Bank of Money",
                 "account_number": "789",
                 "alias": "Main checking account",
+                "network": [{"name": "generic_bank"}],
+            },
+            "truelayer_vrp": {
+              "type": "TRUELAYER_VRP_MANDATE",
+              "brand": "TrueLayer",
+              "network": [{"name": "truelayer"}],
+              "account_number": "12345678",
+              "alias": "TrueLayer VRP mandate"
+            },
+            "truelayer_sip1": {
+                "type": "TRUELAYER_SIP",
+                "brand": "TrueLayer",
+                "network": [{"name": "truelayer"}],
+                "account_number": "87654321",
+                "alias": "TrueLayer Single immediate payment (SIP)",
             }
         },
+
     },
     "elmerfudd@gmail.com": {
         "payment_methods": {
@@ -270,5 +287,7 @@ def set_account_payment_method(
 
   # Add/update the payment method
   _account_db[email_address]["payment_methods"][payment_method_id] = payment_method_data
+
+  logging.info("Account db updated, current state: %s", _account_db)
 
   return payment_method_data
