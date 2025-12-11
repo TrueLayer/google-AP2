@@ -6,13 +6,9 @@ using TrueLayer's *Pay By Bank* as the payment method.
 ## Supported scenarios
 
 Currently, we support 3 different scenarios:
-1. Single immediate payments
+1. VRP commercial mandate for a new user
 2. VRP commercial mandate for a returning user
-3. VRP commercial mandate for a new user
-
-### Single immediate payments
-
-In the single immediate payment scenario, the shopping agent yields a link to our Hosted Payments page where the user can authorise and complete the payment on a selected bank. Once the payment is completed, a receipt is created and shown to the user for confirmation.
+3. Single immediate payments
 
 ### VRP commercial payments
 
@@ -22,8 +18,11 @@ If the user is a new user (`daffyduck@gmail.com` in our sample), the user is req
 
 In both cases, similarly to what happens in the single payment scenario, the user is shown a payment receipt confirming the transaction
 
-
 https://github.com/user-attachments/assets/bd86408a-f19b-4727-9977-cd12c485a6ba
+
+### Single immediate payments
+
+In the single immediate payment scenario, the shopping agent yields a link to our Hosted Payments page where the user can authorise and complete the payment on a selected bank. Once the payment is completed, a receipt is created and shown to the user for confirmation.
 
 
 ## Key Actors
