@@ -475,9 +475,6 @@ async def _handle_vrp_mandate_payment(
     amount = payment_total.amount.value
     currency = payment_total.amount.currency
 
-    # Generate reference from mandate ID
-    reference = f"mandate_{payment_mandate_id}"
-
     logging.info(
         "Calling TrueLayer API for payment %s with VRP mandate %s...",
         payment_mandate_id,
@@ -490,7 +487,6 @@ async def _handle_vrp_mandate_payment(
           vrp_mandate_id=vrp_mandate_id,
           amount=amount,
           currency=currency,
-          reference=reference,
       )
       logging.info("TrueLayer payment response: %s", truelayer_response)
       # Extract TrueLayer payment ID from response
@@ -574,8 +570,7 @@ async def _get_truelayer_access_token() -> str:
 async def _call_truelayer_payments_api_vrp(
     vrp_mandate_id: str,
     amount: float,
-    currency: str,
-    reference: str,
+    currency: str
 ) -> dict:
   """Calls TrueLayer Payments API to execute payment via VRP mandate.
 
@@ -583,7 +578,6 @@ async def _call_truelayer_payments_api_vrp(
     vrp_mandate_id: The VRP mandate ID from credentials
     amount: Payment amount in major currency units (e.g., 10.50)
     currency: Three-letter ISO currency code (e.g., "GBP")
-    reference: Payment reference string
 
   Returns:
     API response as dictionary
@@ -598,10 +592,6 @@ async def _call_truelayer_payments_api_vrp(
   # Generate idempotency key
   idempotency_key = str(uuid.uuid4())
 
-  # Generate payment method reference (max 18 chars)
-  import random
-  payment_method_reference = f"ap2-vrp-test-{random.randint(1, 1000)}"
-
   # Prepare payload with consistent JSON formatting for signature
   # Note: Hardcoding GBP for TrueLayer API regardless of the payment mandate currency.
   # In a real implementation, currency conversion would be handled, but for this demo
@@ -610,10 +600,8 @@ async def _call_truelayer_payments_api_vrp(
       "payment_method": {
           "type": "mandate",
           "mandate_id": vrp_mandate_id,
-          "reference": payment_method_reference,
       },
       "amount_in_minor": amount_in_minor,
-      "reference": reference,
       "currency": "GBP",
   }
   body = json.dumps(payload, separators=(",", ":"))
