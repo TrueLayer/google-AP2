@@ -161,7 +161,7 @@ Refer to the [cards sample](../cards/README.md) for more details on how to troub
 
 ### VRP mandate example for new user
 
-https://github.com/user-attachments/assets/45862ac6-5293-4381-bd70-bfb380145952
+https://github.com/user-attachments/assets/34bc62c1-4323-45dc-9af2-f5910f230a4d
 
 ### VRP mandate example for returning user
 
@@ -170,7 +170,3 @@ https://github.com/user-attachments/assets/f2db4209-33e9-4f98-94de-6014abb41b32
 ### Single immediate payment example
 
 https://github.com/user-attachments/assets/4b37a9b5-8154-4c1f-bd6d-5bec71106226
-
-
-
-
