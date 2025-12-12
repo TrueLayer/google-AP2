@@ -20,10 +20,13 @@ In both cases, similarly to what happens in the single payment scenario, the use
 
 https://github.com/user-attachments/assets/bd86408a-f19b-4727-9977-cd12c485a6ba
 
+https://github.com/user-attachments/assets/f467bd47-244b-44f7-9370-994a7ef66597
+
 ### Single immediate payments
 
 In the single immediate payment scenario, the shopping agent yields a link to our Hosted Payments page where the user can authorise and complete the payment on a selected bank. Once the payment is completed, a receipt is created and shown to the user for confirmation.
 
+https://github.com/user-attachments/assets/b8466d55-d642-49bd-9bb1-220ddb714740
 
 ## Key Actors
 
@@ -155,3 +158,17 @@ Then, open a browser and navigate to the shopping agent UI at http://0.0.0.0:800
 may now begin interacting with the Shopping Agent.
 
 Refer to the [cards sample](../cards/README.md) for more details on how to troubleshoot the execution of the agent.
+
+### VRP mandate example for new user
+
+### VRP mandate example for returning user
+
+https://github.com/user-attachments/assets/f2db4209-33e9-4f98-94de-6014abb41b32
+
+### Single immediate payment example
+
+https://github.com/user-attachments/assets/4b37a9b5-8154-4c1f-bd6d-5bec71106226
+
+
+
+
