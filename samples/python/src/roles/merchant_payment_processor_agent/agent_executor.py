@@ -50,5 +50,7 @@ class PaymentProcessorExecutor(BaseServerExecutor):
     """Initializes the PaymentProcessorExecutor."""
     agent_tools = [
         tools.initiate_payment,
+        tools.get_payment_status,
+        tools.get_mandate_status,
     ]
     super().__init__(supported_extensions, agent_tools, self._system_prompt)

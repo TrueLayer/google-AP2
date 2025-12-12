@@ -49,6 +49,10 @@ from common.payment_remote_a2a_client import PaymentRemoteA2aClient
 # is integrated with.
 _PAYMENT_PROCESSORS_BY_PAYMENT_METHOD_TYPE = {
     "CARD": "http://localhost:8003/a2a/merchant_payment_processor_agent",
+    "BANK_ACCOUNT": "http://localhost:8003/a2a/merchant_payment_processor_agent",
+    "DIGITAL_WALLET": "http://localhost:8003/a2a/merchant_payment_processor_agent",
+    "TRUELAYER_VRP_MANDATE": "http://localhost:8003/a2a/merchant_payment_processor_agent",
+    "TRUELAYER_SIP": "http://localhost:8003/a2a/merchant_payment_processor_agent",
 }
 
 # A placeholder for a JSON Web Token (JWT) used for merchant authorization.
@@ -157,6 +161,9 @@ async def initiate_payment(
     current_task: The current task, used to find the processor's task ID.
     debug_mode: Whether the agent is in debug mode.
   """
+
+  logging.info("Initiating payment...")
+
   payment_mandate = message_utils.parse_canonical_object(
       PAYMENT_MANDATE_DATA_KEY, data_parts, PaymentMandate
   )
@@ -209,7 +216,29 @@ async def initiate_payment(
   if payment_processor_task_id:
     message_builder.set_task_id(payment_processor_task_id)
 
+  logging.info("Sending initiate_payment to processor at %s", processor_url)
   task = await payment_processor_agent.send_a2a_message(message_builder.build())
+
+  # Add payment_id or mandate_id to artifacts if present
+  payment_id = artifact_utils.find_key(task.artifacts, "payment_id")
+  if payment_id:
+    await updater.add_artifact([
+       Part(
+          root=DataPart(
+              data={"payment_id": payment_id[0]}
+          )
+       )
+    ])
+
+  mandate_id = artifact_utils.find_key(task.artifacts, "mandate_id")
+  if mandate_id:
+    await updater.add_artifact([
+       Part(
+          root=DataPart(
+              data={"mandate_id": mandate_id[0]}
+          )
+       )
+    ])
 
   # Pass the payment receipt back to the shopping agent if it exists.
   payment_receipts = artifact_utils.find_canonical_objects(
@@ -258,12 +287,170 @@ async def dpc_finish(
   # DPC response.
   # TODO: Pass the DPC response to the payment processor agent for validation.
 
+  # Extract payment_id from the DPC response
+  payment_id = dpc_response.get("payment_id")
+
   # Simulate payment finalization.
+  status_data = {
+      "payment_status": "SUCCESS",
+      "transaction_id": "txn_1234567890",
+      "payment_id": payment_id,
+  }
+
+  # Store the payment status for later retrieval
+  if payment_id:
+    storage.set_payment_status(payment_id, status_data)
+    logging.info("Stored payment status for payment_id: %s", payment_id)
+
   await updater.add_artifact([
-      Part(root=DataPart(data={
-          "payment_status": "SUCCESS",
-          "transaction_id": "txn_1234567890",
-      }))
+      Part(root=DataPart(data=status_data))
+  ])
+  await updater.complete()
+
+
+async def get_payment_status(
+    data_parts: list[dict[str, Any]],
+    updater: TaskUpdater,
+    current_task: Task | None,
+    debug_mode: bool = False,
+) -> None:
+  """Retrieves the payment status for a given payment ID.
+
+  This tool is used by the shopping agent to poll for payment completion
+  after the user has been redirected to complete payment.
+
+  Args:
+    data_parts: A list of data part contents from the request.
+    updater: The TaskUpdater instance to add artifacts and complete the task.
+    current_task: The current task, not used in this function.
+    debug_mode: Whether the agent is in debug mode.
+  """
+  payment_id = message_utils.find_data_part("payment_id", data_parts)
+  if not payment_id:
+    await _fail_task(updater, "Missing payment_id.")
+    return
+
+  # Retrieve payment status from storage
+  payment_method_type = "TRUELAYER_SIP"
+  processor_url = _PAYMENT_PROCESSORS_BY_PAYMENT_METHOD_TYPE.get(
+      payment_method_type
+  )
+
+  if not processor_url:
+      await _fail_task(
+          updater, f"No payment processor found for method: {payment_method_type}"
+      )
+      return
+
+  payment_processor_agent = PaymentRemoteA2aClient(
+      name="payment_processor_agent",
+      base_url=processor_url,
+      required_extensions={
+          EXTENSION_URI,
+      },
+  )
+
+  message_builder = (
+      A2aMessageBuilder()
+      .set_context_id(updater.context_id)
+      .add_text("get payment status")
+      .add_data("payment_id", payment_id)
+      .add_data("debug_mode", debug_mode)
+  )
+
+  payment_processor_task_id = _get_payment_processor_task_id(current_task)
+  if payment_processor_task_id:
+    message_builder.set_task_id(payment_processor_task_id)
+
+  task = await payment_processor_agent.send_a2a_message(message_builder.build())
+
+  payment_id = artifact_utils.find_key(task.artifacts, "payment_id")
+  payment_status = artifact_utils.find_key(task.artifacts, "payment_status")
+  await updater.add_artifact([
+      Part(
+          root=DataPart(
+              data={
+                  "payment_id": payment_id[0],
+                  "payment_status": payment_status[0],
+              }
+          )
+      )
+  ])
+  await updater.complete()
+
+
+async def get_mandate_status(
+    data_parts: list[dict[str, Any]],
+    updater: TaskUpdater,
+    current_task: Task | None,
+    debug_mode: bool = False,
+) -> None:
+  """Retrieves the mandate status for a given mandate ID.
+
+  This tool is used by the shopping agent to poll for mandate authorization
+  after the user has been redirected to authorize the mandate.
+
+  Args:
+    data_parts: A list of data part contents from the request.
+    updater: The TaskUpdater instance to add artifacts and complete the task.
+    current_task: The current task, not used in this function.
+    debug_mode: Whether the agent is in debug mode.
+  """
+  mandate_id = message_utils.find_data_part("mandate_id", data_parts)
+  if not mandate_id:
+    await _fail_task(updater, "Missing mandate_id.")
+    return
+
+  # Retrieve mandate status from payment processor
+  payment_method_type = "TRUELAYER_VRP_MANDATE"
+  processor_url = _PAYMENT_PROCESSORS_BY_PAYMENT_METHOD_TYPE.get(
+      payment_method_type
+  )
+
+  if not processor_url:
+      await _fail_task(
+          updater, f"No payment processor found for method: {payment_method_type}"
+      )
+      return
+
+  payment_processor_agent = PaymentRemoteA2aClient(
+      name="payment_processor_agent",
+      base_url=processor_url,
+      required_extensions={
+          EXTENSION_URI,
+      },
+  )
+
+  message_builder = (
+      A2aMessageBuilder()
+      .set_context_id(updater.context_id)
+      .add_text("get mandate status")
+      .add_data("mandate_id", mandate_id)
+      .add_data("debug_mode", debug_mode)
+  )
+
+  payment_processor_task_id = _get_payment_processor_task_id(current_task)
+  if payment_processor_task_id:
+    message_builder.set_task_id(payment_processor_task_id)
+
+  task = await payment_processor_agent.send_a2a_message(message_builder.build())
+
+  mandate_id_result = artifact_utils.find_key(task.artifacts, "mandate_id")
+  mandate_status = artifact_utils.find_key(task.artifacts, "mandate_status")
+  mandate_details = artifact_utils.find_key(task.artifacts, "mandate_details")
+
+  result_data = {}
+  if mandate_id_result:
+    result_data["mandate_id"] = mandate_id_result[0]
+  if mandate_status:
+    result_data["mandate_status"] = mandate_status[0]
+  if mandate_details:
+    result_data["mandate_details"] = mandate_details[0]
+
+  await updater.add_artifact([
+      Part(
+          root=DataPart(data=result_data)
+      )
   ])
   await updater.complete()
 

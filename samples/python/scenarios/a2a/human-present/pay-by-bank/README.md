@@ -170,7 +170,3 @@ https://github.com/user-attachments/assets/f2db4209-33e9-4f98-94de-6014abb41b32
 ### Single immediate payment example
 
 https://github.com/user-attachments/assets/4b37a9b5-8154-4c1f-bd6d-5bec71106226
-
-
-
-

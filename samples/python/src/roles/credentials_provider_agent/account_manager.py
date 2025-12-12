@@ -18,6 +18,8 @@ Each 'account' contains a user's payment methods and shipping address.
 For demonstration purposes, several accounts are pre-populated with sample data.
 """
 
+import logging
+import os
 from typing import Any
 
 
@@ -34,54 +36,97 @@ _account_db = {
             "phone_number": "+1-000-000-0000",
         },
         "payment_methods": {
-            "card1": {
-                "type": "CARD",
-                "alias": "American Express ending in 4444",
-                "network": [{"name": "amex", "formats": ["DPAN"]}],
-                "cryptogram": "fake_cryptogram_abc123",
-                "token": "1111000000000000",
-                "card_holder_name": "John Doe",
-                "card_expiration": "12/2025",
-                "card_billing_address": {
-                    "country": "US",
-                    "postal_code": "00000",
-                },
+            # "card1": {
+            #     "type": "CARD",
+            #     "alias": "American Express ending in 4444",
+            #     "network": [{"name": "amex", "formats": ["DPAN"]}],
+            #     "cryptogram": "fake_cryptogram_abc123",
+            #     "token": "1111000000000000",
+            #     "card_holder_name": "John Doe",
+            #     "card_expiration": "12/2025",
+            #     "card_billing_address": {
+            #         "country": "US",
+            #         "postal_code": "00000",
+            #     },
+            # },
+            # "card2": {
+            #     "type": "CARD",
+            #     "alias": "American Express ending in 8888",
+            #     "network": [{"name": "amex", "formats": ["DPAN"]}],
+            #     "cryptogram": "fake_cryptogram_ghi789",
+            #     "token": "2222000000000000",
+            #     "card_holder_name": "Bugs Bunny",
+            #     "card_expiration": "10/2027",
+            #     "card_billing_address": {
+            #         "country": "US",
+            #         "postal_code": "00000",
+            #     },
+            # },
+            # "bank_account1": {
+            #     "type": "BANK_ACCOUNT",
+            #     "network": [{"name": "generic_bank"}],
+            #     "account_number": "111",
+            #     "alias": "Primary bank account",
+            # },
+            # "digital_wallet1": {
+            #     "type": "DIGITAL_WALLET",
+            #     "brand": "PayPal",
+            #     "network": [{"name": "paypal"}],
+            #     "account_identifier": "foo@bar.com",
+            #     "alias": "Bugs's PayPal account",
+            # },
+            "truelayer_vrp": {
+                "type": "TRUELAYER_VRP_MANDATE",
+                "brand": "TrueLayer",
+                "network": [{"name": "truelayer"}],
+                "account_number": "12345678",
+                "alias": "TrueLayer VRP mandate",
+                "vrp_mandate_id": os.getenv("TL_MANDATE_ID") or os.getenv("VRP_MANDATE_ID"),
             },
-            "card2": {
-                "type": "CARD",
-                "alias": "American Express ending in 8888",
-                "network": [{"name": "amex", "formats": ["DPAN"]}],
-                "cryptogram": "fake_cryptogram_ghi789",
-                "token": "2222000000000000",
-                "card_holder_name": "Bugs Bunny",
-                "card_expiration": "10/2027",
-                "card_billing_address": {
-                    "country": "US",
-                    "postal_code": "00000",
-                },
-            },
-            "bank_account1": {
-                "type": "BANK_ACCOUNT",
-                "account_number": "111",
-                "alias": "Primary bank account",
-            },
-            "digital_wallet1": {
-                "type": "DIGITAL_WALLET",
-                "brand": "PayPal",
-                "account_identifier": "foo@bar.com",
-                "alias": "Bugs's PayPal account",
+            "truelayer_sip1": {
+                "type": "TRUELAYER_SIP",
+                "brand": "TrueLayer",
+                "network": [{"name": "truelayer"}],
+                "account_number": "87654321",
+                "alias": "TrueLayer Single immediate payment (SIP)",
             },
         },
     },
     "daffyduck@gmail.com": {
+        "shipping_address": {
+            "recipient": "Daffy Duck",
+            "organization": "Sample Organization",
+            "address_line": ["40 Finsbury Square"],
+            "city": "London",
+            "region": "ST",
+            "postal_code": "00000",
+            "country": "US",
+            "phone_number": "+1-111-111-1111",
+        },
         "payment_methods": {
             "bank_account1": {
                 "type": "BANK_ACCOUNT",
                 "brand": "Bank of Money",
                 "account_number": "789",
                 "alias": "Main checking account",
+                "network": [{"name": "generic_bank"}],
+            },
+            "truelayer_vrp": {
+              "type": "TRUELAYER_VRP_MANDATE",
+              "brand": "TrueLayer",
+              "network": [{"name": "truelayer"}],
+              "account_number": "12345678",
+              "alias": "TrueLayer VRP mandate"
+            },
+            "truelayer_sip1": {
+                "type": "TRUELAYER_SIP",
+                "brand": "TrueLayer",
+                "network": [{"name": "truelayer"}],
+                "account_number": "87654321",
+                "alias": "TrueLayer Single immediate payment (SIP)",
             }
         },
+
     },
     "elmerfudd@gmail.com": {
         "payment_methods": {
@@ -154,7 +199,6 @@ def verify_token(token: str, payment_mandate_id: str) -> dict[str, Any]:
   alias = account_lookup.get("payment_method_alias")
   return get_payment_method_by_alias(email_address, alias)
 
-
 def get_account_payment_methods(email_address: str) -> list[dict[str, Any]]:
   """Returns a list of the payment methods for the given account email address.
 
@@ -162,12 +206,25 @@ def get_account_payment_methods(email_address: str) -> list[dict[str, Any]]:
     email_address: The account's email address.
 
   Returns:
-    A list of the user's payment_methods.
+    A list of the user's payment_methods, with TrueLayer methods first.
   """
-
-  return list(
+  payment_methods = list(
       _account_db.get(email_address, {}).get("payment_methods", {}).values()
   )
+
+  # Sort to show TrueLayer payment methods first (VRP mandate, then SIP)
+  def sort_key(pm):
+    pm_type = pm.get("type")
+    if pm_type == "TRUELAYER_VRP_MANDATE":
+      return (0, pm.get("alias", ""))
+    elif pm_type == "TRUELAYER_SIP":
+      return (1, pm.get("alias", ""))
+    else:
+      return (2, pm.get("alias", ""))
+
+  payment_methods.sort(key=sort_key)
+
+  return payment_methods
 
 
 def get_account_shipping_address(email_address: str) -> dict[str, Any]:
@@ -206,3 +263,41 @@ def get_payment_method_by_alias(
   if not payment_methods:
     return None
   return payment_methods[0]
+
+
+def set_account_payment_method(
+    email_address: str,
+    payment_method_id: str,
+    payment_method_type: str,
+    payment_method_data: dict[str, Any]
+) -> dict[str, Any]:
+  """Adds or updates a payment method for a given account.
+
+  Args:
+    email_address: The account's email address.
+    payment_method_id: Unique identifier for the payment method (e.g., "card3").
+    payment_method_type: The type of payment method (e.g., "CARD", "BANK_ACCOUNT",
+                         "TRUELAYER_SIP", "TRUELAYER_VRP_MANDATE").
+    payment_method_data: Dictionary containing the payment method details.
+                         Should include "alias" and other type-specific fields.
+
+  Returns:
+    The newly added/updated payment method.
+  """
+  # Ensure the account exists
+  if email_address not in _account_db:
+    _account_db[email_address] = {"payment_methods": {}}
+
+  # Ensure payment_methods dict exists
+  if "payment_methods" not in _account_db[email_address]:
+    _account_db[email_address]["payment_methods"] = {}
+
+  # Set the type in the payment method data
+  payment_method_data["type"] = payment_method_type
+
+  # Add/update the payment method
+  _account_db[email_address]["payment_methods"][payment_method_id] = payment_method_data
+
+  logging.info("Account db updated, current state: %s", _account_db)
+
+  return payment_method_data

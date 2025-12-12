@@ -94,4 +94,8 @@ async def get_payment_credential_token(
       "value": token,
       "url": credentials_provider_agent_card.url,
   }
+
+  # Store the payment method alias to determine the type later
+  tool_context.state["selected_payment_method_alias"] = payment_method_alias
+
   return {"status": "success", "token": token}
