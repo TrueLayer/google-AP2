@@ -1,134 +1,176 @@
-# Agent Payments Protocol (AP2)
+# Agent Payments Protocol Sample: Pay by Bank
 
-[![Apache License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/google-agentic-commerce/AP2)
+This sample demonstrates the A2A ap2-extension for a human present transaction
+using TrueLayer's *Pay By Bank* as the payment method.
 
-<!-- markdownlint-disable MD041 -->
-<p align="center">
-  <img src="docs/assets/ap2_graphic.png" alt="Agent Payments Protocol Graphic">
-</p>
+## Supported scenarios
 
-This repository contains code samples and demos of the Agent Payments Protocol.
+Currently, we support 3 different scenarios:
+1. VRP mandate for a new user
+2. VRP mandate for a returning user
+3. Single immediate payments
 
-## Intro to AP2 Video
+### VRP mandate payments
 
-[![A2A Intro Video](https://img.youtube.com/vi/yLTp3ic2j5c/hqdefault.jpg)](https://goo.gle/ap2-video)
+In VRP cases, if the user is a returning one (`bugsbunny@gmail.com` in our example) they are simply requested to confirm the payment, without any further authentication step on the bank.
 
-### AP2 on The Agent Factory
+If the user is a new user (`daffyduck@gmail.com` in our sample), the user is requested to authorise the VRP mandate on the bank first, and only once the authorisation completes, the shopping agent proceeds creating a payment using the mandate just created.
 
-[![The Agent Factory - Episode 8: Agent payments, can you do my shopping?](https://img.youtube.com/vi/T1MtWnEYXM0/hqdefault.jpg)](https://youtu.be/T1MtWnEYXM0?si=QkJWnAiav0JAP9F6)
+In both cases, similarly to what happens in the single payment scenario, the user is shown a payment receipt confirming the transaction
 
-## About the Samples
+https://github.com/user-attachments/assets/bd86408a-f19b-4727-9977-cd12c485a6ba
 
-These samples use [Agent Development Kit (ADK)](https://google.github.io/adk-docs/) and Gemini 2.5 Flash.
+https://github.com/user-attachments/assets/f467bd47-244b-44f7-9370-994a7ef66597
 
-The Agent Payments Protocol doesn't require the use of either. While these were
-used in the samples, you're free to use any tools you prefer to build your
-agents.
+### Single immediate payments
 
-## Navigating the Repository
+In the single immediate payment scenario, the shopping agent yields a link to our Hosted Payments page where the user can authorise and complete the payment on a selected bank. Once the payment is completed, a receipt is created and shown to the user for confirmation.
 
-The **`samples`** directory contains a collection of curated scenarios meant to
-demonstrate the key components of the Agent Payments Protocol.
+https://github.com/user-attachments/assets/b8466d55-d642-49bd-9bb1-220ddb714740
 
-The scenarios can be found in the [**`samples/android/scenarios`**](samples/android/scenarios) and [**`samples/python/scenarios`**](samples/python/scenarios) directories.
+## Key Actors
 
-Each scenario contains:
+This sample consists of:
 
-- a `README.md` file describing the scenario and instructions for running it.
-- a `run.sh` script to simplify the process of running the scenario locally.
 
-This demonstration features various agents and servers, with most source code
-located in [**`samples/python/src`**](samples/python/src/). Scenarios that use an Android app as the
-shopping assistant have their source code in [**`samples/android`**](samples/android/).
+*  **Shopping Agent:** The main orchestrator that handles user's requests to
+    shop and delegates tasks to specialized agents.
+*   **Merchant Agent:** An agent that handles product queries from the shopping
+    agent.
+*   **Merchant Payment Processor Agent:** An agent that takes payments on behalf
+    of the merchant.
+*   **Credentials Provider Agent:** The credentials provider is the holder of a
+    user's payment credentials.
 
-## Quickstart
+To use be able to TrueLayer payment methods we had to slightly modify the implementation available in the cards sample. More precisely...
 
-### Prerequisites
+### Shopping agent changes
 
-- Python 3.10 or higher
-- [`uv`](https://docs.astral.sh/uv/getting-started/installation/) package manager
+We had to amend the shopping agent prompt so that we could handle resuming a payment flow after a VRP mandate or one-off payment consent were authorised on the user's bank.
+
+
+### Credentials providers use
+
+The credentials provider is used as vault for payment methods issued by TrueLayer. Rather than storing card details, we imagine the credentials provider agent as vault for payments consents, both for one-off payments and pre-authorized Variable Recurring Payment (VRP) mandates. The credentials provider exposes tools to:
+- List eligible bank accounts associated with the user’s TrueLayer consents
+- Retrieve stored VRP mandate identifiers and their active status
+- Issue short-lived payment initiation tokens for new payments
+- Attach payment method details (consent ID or mandate ID) into the PaymentMandate
+
+At the minute, for the purpose of the demo, only VRP-related directives have been implemented.
+
+### Merchant Payment Processor Agent
+
+Here is where we have integrated our payments and mandates APIs.
+
+## Sequence diagram
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant SA as Shopping<br/>Agent
+    participant CPA as Credential Provider<br/>Agent
+    participant MA as Merchant<br/>Agent
+    participant MPP as Merchant<br/>Payment Processor<br/>Agent
+    participant TL as TrueLayer
+    participant B as Bank
+
+    U->>SA: "I would like to buy a pizza"
+    Note over SA: Intent Mandate<br/>( contains user search details<br/>e.g: price cap, merchant, ... )
+    SA->>U: Show Intent Mandate
+    U->>SA: Approve
+    SA->>MA: Search for products
+    Note over MA: Cart Mandate<br/>( proposed products )
+    MA->>SA: Return candidate products
+    SA->>U: Show Cart Mandate
+    U->>SA: Select product/s
+    SA->>MA: Send Cart Mandate
+    MA->>MA: Sign Cart Mandate
+    MA->>SA: Return signed Cart Mandate
+    SA->>CPA: Request shipping options
+    CPA->>SA: Provide shipping options
+    SA->>U: Provide shipping options
+    U->>SA: Select shipping address
+    SA->>CPA: Request payment options
+    CPA->>SA: Provide payment options
+    SA->>U: Provide payment options
+    U->>SA: Select pament method
+    Note over SA: Payment Mandate<br/>( selected product/s<br/>+ shipping address<br/>+ payment method )
+    SA->>U: Show Payment Mandate
+    U->>U: Sign Payment Mandate
+    U->>SA: Approve
+    SA->>MA: Initiate payment
+    MA->>MPP: Initiate payment
+    MPP->>CPA: Request payment credentials
+    CPA->>MPP: Provide payment credentials
+    MPP->>TL: Initiate payment
+    TL->>B: Initiate payment
+    B-->>U: Strong customer authentication
+    U-->>B: Confirm
+    B-->>TL: Confirm
+    TL->>MPP: Complete transaction
+    MPP->>MA: Payment Receipt
+    MA->>SA: Payment Receipt
+    SA->>U: Payment Receipt
+    MPP->>CPA: Store Payment Receipt
+```
+
+## Executing the Example
 
 ### Setup
 
-You can authenticate using either a Google API Key or Vertex AI.
-
-For either method, you can set the required credentials as environment variables in your shell or place them in a `.env` file at the root of your project.
-
-#### Option 1: Google API Key (Recommended for development)
-
-1. Obtain a Google API key from [Google AI Studio](http://aistudio.google.com/apikey).
-2. Set the `GOOGLE_API_KEY` environment variable.
-
-    - **As an environment variable:**
-
-        ```sh
-        export GOOGLE_API_KEY='your_key'
-        ```
-
-    - **In a `.env` file:**
-
-        ```sh
-        GOOGLE_API_KEY='your_key'
-        ```
-
-#### Option 2: [Vertex AI](https://cloud.google.com/vertex-ai) (Recommended for production)
-
-1. **Configure your environment to use Vertex AI.**
-    - **As environment variables:**
-
-        ```sh
-        export GOOGLE_GENAI_USE_VERTEXAI=true
-        export GOOGLE_CLOUD_PROJECT='your-project-id'
-        export GOOGLE_CLOUD_LOCATION='global' # or your preferred region
-        ```
-
-    - **In a `.env` file:**
-
-        ```sh
-        GOOGLE_GENAI_USE_VERTEXAI=true
-        GOOGLE_CLOUD_PROJECT='your-project-id'
-        GOOGLE_CLOUD_LOCATION='global'
-        ```
-
-2. **Authenticate your application.**
-    - **Using the [`gcloud` CLI](https://cloud.google.com/sdk/docs/install):**
-
-        ```sh
-        gcloud auth application-default login
-        ```
-
-    - **Using a Service Account:**
-
-        ```sh
-        export GOOGLE_APPLICATION_CREDENTIALS='/path/to/your/service-account-key.json'
-        ```
-
-### How to Run a Scenario
-
-To run a specific scenario, follow the instructions in its `README.md`. It will
-generally follow this pattern:
-
-1. Navigate to the root of the repository.
-
-    ```sh
-    cd AP2
-    ```
-
-1. Run the run script to install dependencies & start the agents.
-
-    ```sh
-    bash samples/python/scenarios/your-scenario-name/run.sh
-    ```
-
-1. Navigate to the Shopping Agent URL and begin engaging.
-
-### Installing the AP2 Types Package
-
-The protocol's core objects are defined in the [`src/ap2/types`](src/ap2/types)
-directory. A PyPI package will be published at a later time. Until then, you can
-install the types package directly using this command:
+Ensure you have obtained a Google API key from
+[Google AI Studio](https://aistudio.google.com/apikey). You also need to set up
+TrueLayer credentials including a mandate ID, client credentials, and signing
+keys. Declare the required variables:
 
 ```sh
-uv pip install git+https://github.com/google-agentic-commerce/AP2.git@main
+export GOOGLE_API_KEY=your_google_api_key
+export TL_DOMAIN=truelayer-sandbox.com
+export TL_MANDATE_ID=your_mandate_id
+export TL_CLIENT_ID=your_client_id
+export TL_CLIENT_SECRET=your_client_secret
+export TL_SIGNING_KEY_ID=your_signing_key_id
+export TL_SIGNING_PRIVATE_KEY=your_private_key_pem
+export TL_MERCHANT_ACCOUNT_ID=your_merchant_account_id
+export TL_BENEFICIARY_NAME=your_beneficiary_name
+export TL_RETURN_URI=https://console.truelayer-sandbox.com/redirect-page
 ```
+
+Alternatively, put them into an .env file at the root of your repository.
+
+> [!NOTE]
+> Most of these environment variables all represent your TrueLayer client credentials and/or payment routing information. As such, they must be prepared and retrieved with the help of [our standard integration guides and console](https://docs.truelayer.com/docs/quickstart-create-a-console-account).
+>
+>the `TL_DOMAIN` is used to route requests to a specific TrueLayer environment, Sandbox in this case.
+>
+>the `TL_MANDATE_ID` environment variable is only used to quickly demo the returning case for a VRP mandate payment, and it should be populated with an existing VRP mandate id previously created on TrueLayer. In a real-world scenario, if the mandate is not found, it will be first authorised and then used as payment method.
+
+### Execution
+
+Tu run our sample, we strongly suggest using the bash utility present in the `pay-by-bank` sample folder (cloned from the cards sample).
+
+```sh
+bash samples/python/scenarios/a2a/human-present/pay-by-bank/run.sh
+```
+
+Then, open a browser and navigate to the shopping agent UI at http://0.0.0.0:8000. You
+may now begin interacting with the Shopping Agent.
+
+Refer to the [cards sample](../cards/README.md) for more details on how to troubleshoot the execution of the agent.
+
+### VRP mandate example for new user
+
+https://github.com/user-attachments/assets/45862ac6-5293-4381-bd70-bfb380145952
+
+### VRP mandate example for returning user
+
+https://github.com/user-attachments/assets/f2db4209-33e9-4f98-94de-6014abb41b32
+
+### Single immediate payment example
+
+https://github.com/user-attachments/assets/4b37a9b5-8154-4c1f-bd6d-5bec71106226
+
+
+
+
