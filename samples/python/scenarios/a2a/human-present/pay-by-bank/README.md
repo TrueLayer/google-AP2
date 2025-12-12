@@ -161,6 +161,8 @@ Refer to the [cards sample](../cards/README.md) for more details on how to troub
 
 ### VRP mandate example for new user
 
+https://github.com/user-attachments/assets/45862ac6-5293-4381-bd70-bfb380145952
+
 ### VRP mandate example for returning user
 
 https://github.com/user-attachments/assets/f2db4209-33e9-4f98-94de-6014abb41b32
