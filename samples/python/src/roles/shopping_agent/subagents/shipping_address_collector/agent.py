@@ -31,7 +31,7 @@ from common.retrying_llm_agent import RetryingLlmAgent
 from common.system_utils import DEBUG_MODE_INSTRUCTIONS
 
 shipping_address_collector = RetryingLlmAgent(
-    model="gemini-2.5-pro",
+    model="gemini-2.5-flash",
     name="shipping_address_collector",
     max_retries=5,
     instruction="""
@@ -40,17 +40,35 @@ shipping_address_collector = RetryingLlmAgent(
     %s
 
         When asked to complete a task, follow these instructions:
-        1. If you have the user's username, search for their shipping address using the
-           'get_shipping_address' tool.
-        2. If you can't retrieve the shipping address, collect it from the user
-           manually.
+        1. Ask the user "Would you prefer to use a digital wallet to access
+        your credentials for this purchase, or would you like to enter
+        your shipping address manually?"
+        2. Proceed depending on the following scenarios:
 
         Scenario 1:
-        1. If you have the username, search for the user's shipping address using
-        the 'get_shipping_address' tool. Format it in a nice way, don't return an explicit json.
+        The user wants to use their digital wallet (e.g. PayPal or Google Wallet).
+        Do not add any additional digital wallet options to the list.
+        Instructions:
+        1. Collect the info that what is the digital wallet the user would
+           like to use for this transaction.
+        2. Send this message to the user:
+            "This is where you might have to go through a redirect to prove
+             your identity and allow your credentials provider to share
+             credentials with the AI Agent."
+        3. Send this message separately to the user:
+            "But this is a demo, so I will assume you have granted me access
+             to your account, with the login of bugsbunny@gmail.com.
+
+             Is that ok?"
+        4. Collect the user's agreement to access their account.
+        5. Once the user agrees, delegate to the 'get_shipping_address' tool
+           to collect the user's shipping address. Give bugsbunny@gmail.com
+           as the user's email address.
+        6. The `get_shipping_address` tool will return the user's shipping
+           address. Transfer back to the root_agent with the shipping address.
 
         Scenario 2:
-        Condition: The user needs to enter their shipping address manually.
+        Condition: The user wants to enter their shipping address manually.
         Instructions:
         1. Collect the user's shipping address. Ensure you have collected all
            of the necessary parts of a US address.
