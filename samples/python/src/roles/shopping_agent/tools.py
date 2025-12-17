@@ -20,6 +20,7 @@ shopping and purchasing process, such as updating a cart or initiating payment.
 
 from datetime import datetime
 from datetime import timezone
+import logging
 import uuid
 
 from a2a.types import Artifact
@@ -91,6 +92,9 @@ async def initiate_payment(tool_context: ToolContext, debug_mode: bool = False):
   Returns:
     The status of the payment initiation.
   """
+
+  logging.info("Initiating payment...")
+
   payment_mandate = tool_context.state["signed_payment_mandate"]
   if not payment_mandate:
     raise RuntimeError("No signed payment mandate found in tool context state.")
@@ -184,9 +188,18 @@ def create_payment_mandate(
 
   payment_request = cart_mandate.contents.payment_request
   shipping_address = tool_context.state["shipping_address"]
+
+  # Determine payment method type based on the selected alias
+  selected_alias = tool_context.state.get("selected_payment_method_alias", "")
+  if "SIP" in selected_alias or "Single immediate payment" in selected_alias:
+    method_name = "TRUELAYER_SIP"
+  else:
+    # Default to VRP mandate for TrueLayer payments
+    method_name = "TRUELAYER_VRP_MANDATE"
+
   payment_response = PaymentResponse(
       request_id=payment_request.details.id,
-      method_name="CARD",
+      method_name=method_name,
       details={
           "token": tool_context.state["payment_credential_token"],
       },
@@ -313,6 +326,116 @@ def _generate_payment_mandate_hash(
   return (
       "fake_payment_mandate_hash_" + payment_mandate_contents.payment_mandate_id
   )
+
+
+async def get_payment_status(
+    payment_id: str,
+    tool_context: ToolContext,
+    debug_mode: bool = False,
+) -> dict:
+  """Query the merchant agent for payment status.
+
+  This tool asks the merchant agent to check if a payment has been completed.
+  It should be called repeatedly after payment initiation until the payment
+  is completed.
+
+  Args:
+    payment_id: The payment ID from the payment processor (e.g., TrueLayer).
+    tool_context: The ADK supplied tool context.
+    debug_mode: Whether the agent is in debug mode.
+
+  Returns:
+    Dictionary containing payment status information.
+  """
+  message = (
+      A2aMessageBuilder()
+      .set_context_id(tool_context.state["shopping_context_id"])
+      .add_text("Get payment status")
+      .add_data("payment_id", payment_id)
+      .add_data("shopping_agent_id", "trusted_shopping_agent")
+      .add_data("debug_mode", debug_mode)
+      .build()
+  )
+
+  task = await merchant_agent_client.send_a2a_message(message)
+
+  # Extract payment status from artifacts
+  payment_status = None
+  transaction_id = None
+  if task.artifacts:
+    for i, artifact in enumerate(task.artifacts):
+      if hasattr(artifact, 'parts') and artifact.parts:
+        for j, part in enumerate(artifact.parts):
+          if hasattr(part, 'root'):
+            root = part.root
+            if hasattr(root, 'data'):
+              data = root.data
+              payment_status = data.get("payment_status")
+              transaction_id = data.get("transaction_id")
+
+  result = {
+      "payment_status": payment_status or "UNKNOWN",
+      "transaction_id": transaction_id,
+      "payment_id": payment_id,
+  }
+
+  logging.info("Returning result: %s", result)
+  return result
+
+
+async def get_mandate_status(
+    mandate_id: str,
+    tool_context: ToolContext,
+    debug_mode: bool = False,
+) -> dict:
+  """Query the merchant agent for mandate status.
+
+  This tool asks the merchant agent to check if a mandate has been authorized.
+  It should be called repeatedly after mandate initiation until the mandate
+  is authorized.
+
+  Args:
+    mandate_id: The mandate ID from the payment processor (e.g., TrueLayer).
+    tool_context: The ADK supplied tool context.
+    debug_mode: Whether the agent is in debug mode.
+
+  Returns:
+    Dictionary containing mandate status information.
+  """
+  message = (
+      A2aMessageBuilder()
+      .set_context_id(tool_context.state["shopping_context_id"])
+      .add_text("Get mandate status")
+      .add_data("mandate_id", mandate_id)
+      .add_data("shopping_agent_id", "trusted_shopping_agent")
+      .add_data("debug_mode", debug_mode)
+      .build()
+  )
+
+  task = await merchant_agent_client.send_a2a_message(message)
+
+  # Extract mandate status from artifacts
+  mandate_status = None
+  mandate_details = None
+  if task.artifacts:
+    for i, artifact in enumerate(task.artifacts):
+      if hasattr(artifact, 'parts') and artifact.parts:
+        for j, part in enumerate(artifact.parts):
+          if hasattr(part, 'root'):
+            root = part.root
+            if hasattr(root, 'data'):
+              data = root.data
+              mandate_status = data.get("mandate_status")
+              mandate_details = data.get("mandate_details")
+
+  result = {
+      "mandate_status": mandate_status or "UNKNOWN",
+      "mandate_details": mandate_details,
+      "mandate_id": mandate_id,
+  }
+
+  logging.info("Returning result: %s", result)
+  return result
 
 
 def _parse_cart_mandates(artifacts: list[Artifact]) -> list[CartMandate]:
